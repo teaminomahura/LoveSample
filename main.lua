@@ -96,6 +96,19 @@ function love.update(dt)
             end
         end
     end
+
+    -- ナイフと敵の衝突判定
+    for i = #knives, 1, -1 do
+        local knife = knives[i]
+        for j = #enemies, 1, -1 do
+            local enemy = enemies[j]
+            if checkCollision(knife.x - 5, knife.y - 5, 10, 10, enemy.x - 10, enemy.y - 10, 20, 20) then
+                table.remove(knives, i) -- ナイフを削除
+                table.remove(enemies, j) -- 敵を削除
+                break -- 1つのナイフは1体の敵にしか当たらない
+            end
+        end
+    end
 end
 
 function love.draw()
