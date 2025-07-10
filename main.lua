@@ -169,15 +169,21 @@ function love.update(dt)
     end
 
     -- 敵同士の衝突判定 (緑の敵と赤い敵が当たると両方消滅)
-    for i = #enemies, 1, -1 do
+    local enemies_to_remove = {}
+    for i = 1, #enemies do
         local enemy1 = enemies[i]
-        for j = i - 1, 1, -1 do -- 重複を避けるためi-1から
+        for j = i + 1, #enemies do
             local enemy2 = enemies[j]
             if enemy1.type ~= enemy2.type and checkCollision(enemy1.x - 10, enemy1.y - 10, 20, 20, enemy2.x - 10, enemy2.y - 10, 20, 20) then
-                table.remove(enemies, i)
-                table.remove(enemies, j)
-                break
+                enemies_to_remove[i] = true
+                enemies_to_remove[j] = true
             end
+        end
+    end
+
+    for i = #enemies, 1, -1 do
+        if enemies_to_remove[i] then
+            table.remove(enemies, i)
         end
     end
 end
