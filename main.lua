@@ -158,7 +158,9 @@ function love.update(dt)
                     end
                 else -- enemy.type == "plus"
                     table.remove(knives, i) -- ナイフを削除
-                    -- 緑の敵は消滅させない
+                    -- 緑の敵を分裂させる
+                    table.insert(enemies, { x = enemy.x + 15, y = enemy.y, hp = 1, type = "plus" })
+                    table.insert(enemies, { x = enemy.x - 15, y = enemy.y, hp = 1, type = "plus" })
                     -- 経験値は入らない
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
