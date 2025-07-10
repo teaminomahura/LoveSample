@@ -1,4 +1,4 @@
-local player = { x = 1280 / 2, y = 720 / 2, speed = 200 }
+local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20 }
 local knives = {}
 local knife_speed = 500
 local knife_interval = 0.5 -- 0.5秒ごとにナイフを発射
@@ -12,6 +12,12 @@ local enemy_spawn_timer = 0
 function love.load()
     love.window.setMode(1280, 720, { fullscreen = false, resizable = false, vsync = true })
     love.window.setTitle("Vampire Survivors Clone")
+end
+
+-- 衝突判定関数 (AABB)
+function checkCollision(x1, y1, w1, h1, x2, y2, w2, h2)
+    return x1 < x2 + w2 and x1 + w1 > x2 and
+           y1 < y2 + h2 and y1 + h1 > y2
 end
 
 function love.update(dt)
@@ -74,12 +80,21 @@ function love.update(dt)
         enemy_spawn_timer = 0
     end
 
-    -- 敵の移動 (プレイヤー追跡)
+    -- 敵の移動 (プレイヤー追跡) とプレイヤーへのダメージ
     for i = #enemies, 1, -1 do
         local enemy = enemies[i]
         local angle = math.atan2(player.y - enemy.y, player.x - enemy.x)
         enemy.x = enemy.x + math.cos(angle) * enemy_speed * dt
         enemy.y = enemy.y + math.sin(angle) * enemy_speed * dt
+
+        -- 敵とプレイヤーの衝突判定
+        if checkCollision(player.x - 10, player.y - 10, 20, 20, enemy.x - 10, enemy.y - 10, 20, 20) then
+            player.hp = player.hp - 1 -- プレイヤーにダメージ
+            table.remove(enemies, i) -- 敵を削除
+            if player.hp <= 0 then
+                love.event.quit() -- ゲームオーバー
+            end
+        end
     end
 end
 
@@ -98,6 +113,10 @@ function love.draw()
     for i, enemy in ipairs(enemies) do
         love.graphics.rectangle("fill", enemy.x - 10, enemy.y - 10, 20, 20) -- 敵を四角で描画
     end
+
+    -- HPの表示
+    love.graphics.setColor(1, 1, 1, 1) -- 白に設定
+    love.graphics.print("HP: " .. player.hp, 10, 10)
 end
 
 function love.keypressed(key)
