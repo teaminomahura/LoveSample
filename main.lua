@@ -158,6 +158,7 @@ function love.update(dt)
                     end
                 else -- enemy.type == "plus"
                     table.remove(knives, i) -- ナイフを削除
+                    table.remove(enemies, j) -- 元の緑の敵を削除
                     -- 緑の敵を分裂させる
                     table.insert(enemies, { x = enemy.x + 15, y = enemy.y, hp = 1, type = "plus" })
                     table.insert(enemies, { x = enemy.x - 15, y = enemy.y, hp = 1, type = "plus" })
