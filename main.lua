@@ -1,4 +1,4 @@
-local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20, xp = 0, level = 1 }
+local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20, xp = 0, level = 1, invincible_timer = 0 }
 local knives = {}
 local knife_speed = 500
 local knife_interval = 0.5 -- 0.5秒ごとにナイフを発射
@@ -23,6 +23,11 @@ function checkCollision(x1, y1, w1, h1, x2, y2, w2, h2)
 end
 
 function love.update(dt)
+    -- プレイヤーの無敵時間更新
+    if player.invincible_timer > 0 then
+        player.invincible_timer = player.invincible_timer - dt
+    end
+
     -- プレイヤーの移動
     if love.keyboard.isDown("w", "up") then
         player.y = player.y - player.speed * dt
@@ -90,8 +95,9 @@ function love.update(dt)
         enemy.y = enemy.y + math.sin(angle) * enemy_speed * dt
 
         -- 敵とプレイヤーの衝突判定
-        if checkCollision(player.x - 10, player.y - 10, 20, 20, enemy.x - 10, enemy.y - 10, 20, 20) then
+        if player.invincible_timer <= 0 and checkCollision(player.x - 10, player.y - 10, 20, 20, enemy.x - 10, enemy.y - 10, 20, 20) then
             player.hp = player.hp - 1 -- プレイヤーにダメージ
+            player.invincible_timer = 0.5 -- 0.5秒間無敵
             table.remove(enemies, i) -- 敵を削除
             if player.hp <= 0 then
                 love.event.quit() -- ゲームオーバー
@@ -112,7 +118,7 @@ function love.update(dt)
                     player.level = player.level + 1
                     player.xp = player.xp - xp_to_next_level
                     xp_to_next_level = math.floor(xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
-                    knife_interval = math.max(0.1, knife_interval - 0.05) -- レベルアップでナイフ発射間隔を短縮
+                    knife_interval = math.max(0.1, knife_interval - 0.1) -- レベルアップでナイフ発射間隔を短縮
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
             end
