@@ -58,3 +58,9 @@ function love.draw()
         love.graphics.rectangle("fill", knife.x - 5, knife.y - 5, 10, 10) -- ナイフを小さな四角で描画
     end
 end
+
+function love.keypressed(key)
+    if key == "escape" then
+        love.event.quit()
+    end
+end
