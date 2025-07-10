@@ -1,8 +1,8 @@
 local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20, xp = 0, level = 1, invincible_timer = 0 }
-local knives = {}
-local knife_speed = 500
-local knife_interval = 0.5 -- 0.5秒ごとにナイフを発射
-local knife_timer = 0
+local bullets = {}
+local bullet_speed = 500
+local bullet_interval = 0.5 -- 0.5秒ごとにナイフを発射
+local bullet_timer = 0
 
 local enemies = {}
 local enemy_speed = 100
@@ -48,21 +48,21 @@ function love.update(dt)
     player.y = math.max(0, math.min(player.y, 720))
 
     -- ナイフの発射
-    knife_timer = knife_timer + dt
-    if knife_timer >= knife_interval then
-        table.insert(knives, { x = player.x, y = player.y, angle = math.random() * math.pi * 2 }) -- 全方向に発射
-        knife_timer = 0
+    bullet_timer = bullet_timer + dt
+    if bullet_timer >= bullet_interval then
+        table.insert(bullets, { x = player.x, y = player.y, angle = math.random() * math.pi * 2 }) -- 全方向に発射
+        bullet_timer = 0
     end
 
     -- ナイフの移動と画面外での消滅
-    for i = #knives, 1, -1 do
-        local knife = knives[i]
-        knife.x = knife.x + math.cos(knife.angle) * knife_speed * dt
-        knife.y = knife.y + math.sin(knife.angle) * knife_speed * dt
+    for i = #bullets, 1, -1 do
+        local bullet = bullets[i]
+        bullet.x = bullet.x + math.cos(bullet.angle) * bullet_speed * dt
+        bullet.y = bullet.y + math.sin(bullet.angle) * bullet_speed * dt
 
         -- 画面外に出たら削除
-        if knife.x < -20 or knife.x > 1280 + 20 or knife.y < -20 or knife.y > 720 + 20 then
-            table.remove(knives, i)
+        if bullet.x < -20 or bullet.x > 1280 + 20 or bullet.y < -20 or bullet.y > 720 + 20 then
+            table.remove(bullets, i)
         end
     end
 
@@ -131,7 +131,7 @@ function love.update(dt)
             else -- enemy.type == "plus"
                 player.hp = player.hp + 1 -- プレイヤーを回復
             end
-            player.invincible_timer = 0.5 -- 0.5秒間無敵
+            player.invincible_timer = 0.1 -- 0.1秒間無敵
             table.remove(enemies, i) -- 敵を削除
             if player.hp <= 0 then
                 love.event.quit() -- ゲームオーバー
@@ -140,24 +140,24 @@ function love.update(dt)
     end
 
     -- ナイフと敵の衝突判定
-    for i = #knives, 1, -1 do
-        local knife = knives[i]
+    for i = #bullets, 1, -1 do
+        local bullet = bullets[i]
         for j = #enemies, 1, -1 do
             local enemy = enemies[j]
-            if checkCollision(knife.x - 5, knife.y - 5, 10, 10, enemy.x - 10, enemy.y - 10, 20, 20) then
+            if checkCollision(bullet.x - 5, bullet.y - 5, 10, 10, enemy.x - 10, enemy.y - 10, 20, 20) then
                 -- ナイフはプラス属性なので、マイナス属性の敵を倒し、プラス属性の敵は消滅させる
                 if enemy.type == "minus" then
-                    table.remove(knives, i) -- ナイフを削除
+                    table.remove(bullets, i) -- ナイフを削除
                     table.remove(enemies, j) -- 敵を削除
                     player.xp = player.xp + 1 -- 経験値獲得
                     if player.xp >= xp_to_next_level then
                         player.level = player.level + 1
                         player.xp = player.xp - xp_to_next_level
                         xp_to_next_level = math.floor(xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
-                        knife_interval = math.max(0.1, knife_interval - 0.1) -- レベルアップでナイフ発射間隔を短縮
+                        bullet_interval = math.max(0.1, bullet_interval - 0.1) -- レベルアップでナイフ発射間隔を短縮
                     end
                 else -- enemy.type == "plus"
-                    table.remove(knives, i) -- ナイフを削除
+                    table.remove(bullets, i) -- ナイフを削除
                     table.remove(enemies, j) -- 元の緑の敵を削除
                     -- 緑の敵を分裂させる
                     table.insert(enemies, { x = enemy.x + 15, y = enemy.y, hp = 1, type = "plus" })
@@ -195,8 +195,8 @@ function love.draw()
 
     -- ナイフの描画
     love.graphics.setColor(1, 0, 0, 1) -- 赤に設定
-    for i, knife in ipairs(knives) do
-        love.graphics.rectangle("fill", knife.x - 5, knife.y - 5, 10, 10) -- ナイフを小さな四角で描画
+    for i, bullet in ipairs(bullets) do
+        love.graphics.rectangle("fill", bullet.x - 5, bullet.y - 5, 10, 10) -- ナイフを小さな四角で描画
     end
 
     -- 敵の描画
