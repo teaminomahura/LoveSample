@@ -4,6 +4,11 @@ local knife_speed = 500
 local knife_interval = 0.5 -- 0.5秒ごとにナイフを発射
 local knife_timer = 0
 
+local enemies = {}
+local enemy_speed = 100
+local enemy_spawn_interval = 1 -- 1秒ごとに敵を生成
+local enemy_spawn_timer = 0
+
 function love.load()
     love.window.setMode(1280, 720, { fullscreen = false, resizable = false, vsync = true })
     love.window.setTitle("Vampire Survivors Clone")
@@ -46,6 +51,36 @@ function love.update(dt)
             table.remove(knives, i)
         end
     end
+
+    -- 敵の生成
+    enemy_spawn_timer = enemy_spawn_timer + dt
+    if enemy_spawn_timer >= enemy_spawn_interval then
+        local spawn_x, spawn_y
+        local side = math.random(1, 4) -- 1:上, 2:右, 3:下, 4:左
+        if side == 1 then -- 上
+            spawn_x = math.random(0, 1280)
+            spawn_y = -50
+        elseif side == 2 then -- 右
+            spawn_x = 1280 + 50
+            spawn_y = math.random(0, 720)
+        elseif side == 3 then -- 下
+            spawn_x = math.random(0, 1280)
+            spawn_y = 720 + 50
+        else -- 左
+            spawn_x = -50
+            spawn_y = math.random(0, 720)
+        end
+        table.insert(enemies, { x = spawn_x, y = spawn_y, hp = 1 }) -- 敵を生成
+        enemy_spawn_timer = 0
+    end
+
+    -- 敵の移動 (プレイヤー追跡)
+    for i = #enemies, 1, -1 do
+        local enemy = enemies[i]
+        local angle = math.atan2(player.y - enemy.y, player.x - enemy.x)
+        enemy.x = enemy.x + math.cos(angle) * enemy_speed * dt
+        enemy.y = enemy.y + math.sin(angle) * enemy_speed * dt
+    end
 end
 
 function love.draw()
@@ -56,6 +91,12 @@ function love.draw()
     love.graphics.setColor(1, 0, 0, 1) -- 赤に設定
     for i, knife in ipairs(knives) do
         love.graphics.rectangle("fill", knife.x - 5, knife.y - 5, 10, 10) -- ナイフを小さな四角で描画
+    end
+
+    -- 敵の描画
+    love.graphics.setColor(0, 0, 1, 1) -- 青に設定
+    for i, enemy in ipairs(enemies) do
+        love.graphics.rectangle("fill", enemy.x - 10, enemy.y - 10, 20, 20) -- 敵を四角で描画
     end
 end
 
