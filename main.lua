@@ -8,6 +8,7 @@ local enemies = {}
 local enemy_speed = 100
 local enemy_spawn_interval = 1 -- 1秒ごとに敵を生成
 local enemy_spawn_timer = 0
+local green_enemy_spawn_chance = 0.2 -- 緑の敵の生成確率 (20%)
 
 local xp_to_next_level = 3 -- 次のレベルに必要な経験値
 
@@ -83,20 +84,53 @@ function love.update(dt)
             spawn_x = -50
             spawn_y = math.random(0, 720)
         end
-        table.insert(enemies, { x = spawn_x, y = spawn_y, hp = 1 }) -- 敵を生成
+
+        local enemy_type = "minus" -- デフォルトはマイナス属性
+        if math.random() < green_enemy_spawn_chance then
+            enemy_type = "plus" -- 緑の敵を生成
+        end
+        table.insert(enemies, { x = spawn_x, y = spawn_y, hp = 1, type = enemy_type }) -- 敵を生成
         enemy_spawn_timer = 0
     end
 
-    -- 敵の移動 (プレイヤー追跡) とプレイヤーへのダメージ
+    -- 敵の移動 (プレイヤー追跡) とプレイヤーへのダメージ/回復
     for i = #enemies, 1, -1 do
         local enemy = enemies[i]
-        local angle = math.atan2(player.y - enemy.y, player.x - enemy.x)
+        local target_x, target_y
+
+        if enemy.type == "minus" then
+            target_x, target_y = player.x, player.y -- 赤い敵はプレイヤーを追跡
+        else -- enemy.type == "plus"
+            -- 最も近い赤い敵を追跡
+            local closest_minus_enemy = nil
+            local min_dist_sq = math.huge
+            for k, other_enemy in ipairs(enemies) do
+                if other_enemy.type == "minus" then
+                    local dist_sq = (enemy.x - other_enemy.x)^2 + (enemy.y - other_enemy.y)^2
+                    if dist_sq < min_dist_sq then
+                        min_dist_sq = dist_sq
+                        closest_minus_enemy = other_enemy
+                    end
+                end
+            end
+            if closest_minus_enemy then
+                target_x, target_y = closest_minus_enemy.x, closest_minus_enemy.y
+            else
+                target_x, target_y = player.x, player.y -- 赤い敵がいなければプレイヤーを追跡
+            end
+        end
+
+        local angle = math.atan2(target_y - enemy.y, target_x - enemy.x)
         enemy.x = enemy.x + math.cos(angle) * enemy_speed * dt
         enemy.y = enemy.y + math.sin(angle) * enemy_speed * dt
 
         -- 敵とプレイヤーの衝突判定
         if player.invincible_timer <= 0 and checkCollision(player.x - 10, player.y - 10, 20, 20, enemy.x - 10, enemy.y - 10, 20, 20) then
-            player.hp = player.hp - 1 -- プレイヤーにダメージ
+            if enemy.type == "minus" then
+                player.hp = player.hp - 1 -- プレイヤーにダメージ
+            else -- enemy.type == "plus"
+                player.hp = player.hp + 1 -- プレイヤーを回復
+            end
             player.invincible_timer = 0.5 -- 0.5秒間無敵
             table.remove(enemies, i) -- 敵を削除
             if player.hp <= 0 then
@@ -111,16 +145,36 @@ function love.update(dt)
         for j = #enemies, 1, -1 do
             local enemy = enemies[j]
             if checkCollision(knife.x - 5, knife.y - 5, 10, 10, enemy.x - 10, enemy.y - 10, 20, 20) then
-                table.remove(knives, i) -- ナイフを削除
-                table.remove(enemies, j) -- 敵を削除
-                player.xp = player.xp + 1 -- 経験値獲得
-                if player.xp >= xp_to_next_level then
-                    player.level = player.level + 1
-                    player.xp = player.xp - xp_to_next_level
-                    xp_to_next_level = math.floor(xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
-                    knife_interval = math.max(0.1, knife_interval - 0.1) -- レベルアップでナイフ発射間隔を短縮
+                -- ナイフはプラス属性なので、マイナス属性の敵を倒し、プラス属性の敵は消滅させる
+                if enemy.type == "minus" then
+                    table.remove(knives, i) -- ナイフを削除
+                    table.remove(enemies, j) -- 敵を削除
+                    player.xp = player.xp + 1 -- 経験値獲得
+                    if player.xp >= xp_to_next_level then
+                        player.level = player.level + 1
+                        player.xp = player.xp - xp_to_next_level
+                        xp_to_next_level = math.floor(xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
+                        knife_interval = math.max(0.1, knife_interval - 0.1) -- レベルアップでナイフ発射間隔を短縮
+                    end
+                else -- enemy.type == "plus"
+                    table.remove(knives, i) -- ナイフを削除
+                    -- 緑の敵は消滅させない
+                    -- 経験値は入らない
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
+            end
+        end
+    end
+
+    -- 敵同士の衝突判定 (緑の敵と赤い敵が当たると両方消滅)
+    for i = #enemies, 1, -1 do
+        local enemy1 = enemies[i]
+        for j = i - 1, 1, -1 do -- 重複を避けるためi-1から
+            local enemy2 = enemies[j]
+            if enemy1.type ~= enemy2.type and checkCollision(enemy1.x - 10, enemy1.y - 10, 20, 20, enemy2.x - 10, enemy2.y - 10, 20, 20) then
+                table.remove(enemies, i)
+                table.remove(enemies, j)
+                break
             end
         end
     end
@@ -137,8 +191,12 @@ function love.draw()
     end
 
     -- 敵の描画
-    love.graphics.setColor(0, 0, 1, 1) -- 青に設定
     for i, enemy in ipairs(enemies) do
+        if enemy.type == "minus" then
+            love.graphics.setColor(0, 0, 1, 1) -- 青に設定 (赤い敵)
+        else -- enemy.type == "plus"
+            love.graphics.setColor(0, 1, 0, 1) -- 緑に設定 (回復する敵)
+        end
         love.graphics.rectangle("fill", enemy.x - 10, enemy.y - 10, 20, 20) -- 敵を四角で描画
     end
 
