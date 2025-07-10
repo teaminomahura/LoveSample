@@ -1,4 +1,4 @@
-local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20 }
+local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20, xp = 0, level = 1 }
 local knives = {}
 local knife_speed = 500
 local knife_interval = 0.5 -- 0.5秒ごとにナイフを発射
@@ -8,6 +8,8 @@ local enemies = {}
 local enemy_speed = 100
 local enemy_spawn_interval = 1 -- 1秒ごとに敵を生成
 local enemy_spawn_timer = 0
+
+local xp_to_next_level = 3 -- 次のレベルに必要な経験値
 
 function love.load()
     love.window.setMode(1280, 720, { fullscreen = false, resizable = false, vsync = true })
@@ -105,6 +107,12 @@ function love.update(dt)
             if checkCollision(knife.x - 5, knife.y - 5, 10, 10, enemy.x - 10, enemy.y - 10, 20, 20) then
                 table.remove(knives, i) -- ナイフを削除
                 table.remove(enemies, j) -- 敵を削除
+                player.xp = player.xp + 1 -- 経験値獲得
+                if player.xp >= xp_to_next_level then
+                    player.level = player.level + 1
+                    player.xp = player.xp - xp_to_next_level
+                    xp_to_next_level = math.floor(xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
+                end
                 break -- 1つのナイフは1体の敵にしか当たらない
             end
         end
@@ -130,6 +138,10 @@ function love.draw()
     -- HPの表示
     love.graphics.setColor(1, 1, 1, 1) -- 白に設定
     love.graphics.print("HP: " .. player.hp, 10, 10)
+
+    -- 経験値とレベルの表示
+    love.graphics.print("Level: " .. player.level, 10, 30)
+    love.graphics.print("XP: " .. player.xp .. " / " .. xp_to_next_level, 10, 50)
 end
 
 function love.keypressed(key)
