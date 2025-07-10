@@ -112,7 +112,7 @@ function love.update(dt)
                     player.level = player.level + 1
                     player.xp = player.xp - xp_to_next_level
                     xp_to_next_level = math.floor(xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
-                    knife_speed = knife_speed + 50 -- レベルアップでナイフ速度アップ
+                    knife_interval = math.max(0.1, knife_interval - 0.05) -- レベルアップでナイフ発射間隔を短縮
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
             end
