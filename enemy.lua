@@ -1,3 +1,5 @@
+local utils = require("utils")
+
 local enemy = {}
 
 enemy.enemies = {}
@@ -66,7 +68,7 @@ function enemy.update(dt, player)
         current_enemy.y = current_enemy.y + math.sin(angle) * enemy_speed * dt
 
         -- 敵とプレイヤーの衝突判定
-        if player.invincible_timer <= 0 and checkCollision(player.x - 10, player.y - 10, 20, 20, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
+        if player.invincible_timer <= 0 and utils.checkCollision(player.x - 10, player.y - 10, 20, 20, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
             if current_enemy.type == "minus" then
                 player.hp = player.hp - 1 -- プレイヤーにダメージ
             else -- current_enemy.type == "plus"
@@ -77,6 +79,25 @@ function enemy.update(dt, player)
             if player.hp <= 0 then
                 love.event.quit() -- ゲームオーバー
             end
+        end
+    end
+
+    -- 敵同士の衝突判定 (緑の敵と赤い敵が当たると両方消滅)
+    local enemies_to_remove = {}
+    for i = 1, #enemy.enemies do
+        local enemy1 = enemy.enemies[i]
+        for j = i + 1, #enemy.enemies do
+            local enemy2 = enemy.enemies[j]
+            if enemy1.type ~= enemy2.type and utils.checkCollision(enemy1.x - 10, enemy1.y - 10, 20, 20, enemy2.x - 10, enemy2.y - 10, 20, 20) then
+                enemies_to_remove[i] = true
+                enemies_to_remove[j] = true
+            end
+        end
+    end
+
+    for i = #enemy.enemies, 1, -1 do
+        if enemies_to_remove[i] then
+            table.remove(enemy.enemies, i)
         end
     end
 end
@@ -91,12 +112,6 @@ function enemy.draw()
         end
         love.graphics.rectangle("fill", current_enemy.x - 10, current_enemy.y - 10, 20, 20) -- 敵を四角で描画
     end
-end
-
--- 衝突判定関数 (AABB)
-function checkCollision(x1, y1, w1, h1, x2, y2, w2, h2)
-    return x1 < x2 + w2 and x1 + w1 > x2 and
-           y1 < y2 + h2 and y1 + h1 > y2
 end
 
 return enemy

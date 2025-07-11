@@ -1,4 +1,6 @@
-local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20, xp = 0, level = 1, invincible_timer = 0 }
+local utils = require("utils")
+
+local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20, xp = 0, level = 1, invincible_timer = 0, xp_to_next_level = 3 }
 
 function player.load()
     -- プレイヤーに関する初期化（もしあれば）
