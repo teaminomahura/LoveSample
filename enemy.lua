@@ -80,6 +80,33 @@ function enemy.update(dt, player)
         end
     end
 
+    -- 同じ色の敵同士の重なりを防止
+    for i = 1, #enemy.enemies do
+        local enemy1 = enemy.enemies[i]
+        for j = i + 1, #enemy.enemies do
+            local enemy2 = enemy.enemies[j]
+
+            if enemy1.type == enemy2.type then -- 同じ色の敵同士の場合
+                local dx = enemy1.x - enemy2.x
+                local dy = enemy1.y - enemy2.y
+                local dist_sq = dx*dx + dy*dy
+                local min_dist_sq = 15*15 -- 中心間の最小距離の二乗 (15ピクセル)
+
+                if dist_sq < min_dist_sq and dist_sq > 0 then
+                    local dist = math.sqrt(dist_sq)
+                    local overlap = 15 - dist
+                    local push_x = dx / dist * overlap * 0.5 -- 押し返す力
+                    local push_y = dy / dist * overlap * 0.5
+
+                    enemy1.x = enemy1.x + push_x
+                    enemy1.y = enemy1.y + push_y
+                    enemy2.x = enemy2.x - push_x
+                    enemy2.y = enemy2.y - push_y
+                end
+            end
+        end
+    end
+
     -- 敵同士の衝突判定 (緑の敵と赤い敵が当たると両方消滅)
     local enemies_to_remove = {}
     for i = 1, #enemy.enemies do
