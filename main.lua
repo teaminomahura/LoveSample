@@ -2,6 +2,7 @@ local player = require("player")
 local enemy = require("enemy")
 local bullet = require("bullet")
 local utils = require("utils")
+local game_state = require("game_state")
 
 
 
@@ -18,6 +19,7 @@ function love.update(dt)
     player.update(dt)
     enemy.update(dt, player)
     bullet.update(dt, player, enemy)
+    game_state.update(dt, player)
 
     
 end
