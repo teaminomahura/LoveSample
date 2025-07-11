@@ -5,6 +5,7 @@ local utils = require("utils")
 local game_state = require("game_state")
 local upgrade = require("upgrade")
 local i18n = require("i18n")
+local timer = require("timer")
 
 
 
@@ -33,6 +34,7 @@ function love.update(dt)
         player.update(dt)
         enemy.update(dt, player)
         bullet.update(dt, player, enemy)
+        timer.update(dt)
     end
 end
 
@@ -41,6 +43,7 @@ function love.draw()
         player.draw()
         enemy.draw()
         bullet.draw()
+        timer.draw()
 
         -- HPの表示
         love.graphics.setColor(1, 1, 1, 1) -- 白に設定
@@ -63,6 +66,7 @@ function love.keypressed(key)
         player.reset()
         enemy.reset()
         bullet.reset()
+        timer.reset()
         game_state.current_state = game_state.states.PLAYING
     elseif game_state.current_state == game_state.states.LEVEL_UP_CHOICE then
         if key == "up" then
