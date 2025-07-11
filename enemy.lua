@@ -76,9 +76,7 @@ function enemy.update(dt, player)
             end
             player.invincible_timer = 0.1 -- 0.1秒間無敵
             table.remove(enemy.enemies, i) -- 敵を削除
-            if player.hp <= 0 then
-                love.event.quit() -- ゲームオーバー
-            end
+            
         end
     end
 
@@ -112,6 +110,10 @@ function enemy.draw()
         end
         love.graphics.rectangle("fill", current_enemy.x - 10, current_enemy.y - 10, 20, 20) -- 敵を四角で描画
     end
+end
+
+function enemy.reset()
+    enemy.enemies = {}
 end
 
 return enemy

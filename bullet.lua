@@ -66,4 +66,9 @@ function bullet.draw()
     end
 end
 
+function bullet.reset()
+    bullet.bullets = {}
+    bullet_timer = 0
+end
+
 return bullet
