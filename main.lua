@@ -4,6 +4,7 @@ local bullet = require("bullet")
 local utils = require("utils")
 local game_state = require("game_state")
 local upgrade = require("upgrade")
+local i18n = require("i18n")
 
 
 
@@ -18,6 +19,9 @@ function love.load()
     local font_size = 20 -- フォントサイズを調整
     local japanese_font = love.graphics.newFont(font_path, font_size)
     love.graphics.setFont(japanese_font)
+
+    -- 言語設定を日本語に
+    i18n.set_locale("ja")
 end
 
 
@@ -40,11 +44,11 @@ function love.draw()
 
         -- HPの表示
         love.graphics.setColor(1, 1, 1, 1) -- 白に設定
-        love.graphics.print("HP: " .. player.hp, 10, 10)
+        love.graphics.print(i18n.t("hp") .. ": " .. player.hp, 10, 10)
 
         -- 経験値とレベルの表示
-        love.graphics.print("Level: " .. player.level, 10, 30)
-        love.graphics.print("XP: " .. player.xp .. " / " .. player.xp_to_next_level, 10, 50)
+        love.graphics.print(i18n.t("level") .. ": " .. player.level, 10, 30)
+        love.graphics.print(i18n.t("xp") .. ": " .. player.xp .. " / " .. player.xp_to_next_level, 10, 50)
     elseif game_state.current_state == game_state.states.LEVEL_UP_CHOICE then
         upgrade.draw()
     end
