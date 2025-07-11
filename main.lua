@@ -3,6 +3,7 @@ local enemy = require("enemy")
 local bullet = require("bullet")
 local utils = require("utils")
 local game_state = require("game_state")
+local upgrade = require("upgrade")
 
 
 
@@ -16,7 +17,7 @@ end
 
 
 function love.update(dt)
-    game_state.update(dt, player)
+    game_state.update(dt, player, bullet, upgrade)
 
     if game_state.current_state == game_state.states.PLAYING then
         player.update(dt)
@@ -38,6 +39,8 @@ function love.draw()
         -- 経験値とレベルの表示
         love.graphics.print("Level: " .. player.level, 10, 30)
         love.graphics.print("XP: " .. player.xp .. " / " .. player.xp_to_next_level, 10, 50)
+    elseif game_state.current_state == game_state.states.LEVEL_UP_CHOICE then
+        upgrade.draw()
     end
 
     game_state.draw()
@@ -51,5 +54,14 @@ function love.keypressed(key)
         enemy.reset()
         bullet.reset()
         game_state.current_state = game_state.states.PLAYING
+    elseif game_state.current_state == game_state.states.LEVEL_UP_CHOICE then
+        if key == "up" then
+            upgrade.selected_choice_index = math.max(1, upgrade.selected_choice_index - 1)
+        elseif key == "down" then
+            upgrade.selected_choice_index = math.min(#upgrade.choices, upgrade.selected_choice_index + 1)
+        elseif key == "return" then -- Enterキー
+            upgrade.apply_choice(player, bullet)
+            game_state.current_state = game_state.states.PLAYING
+        end
     end
 end

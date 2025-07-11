@@ -4,13 +4,13 @@ local bullet = {}
 
 bullet.bullets = {}
 local bullet_speed = 500
-local bullet_interval = 0.5 -- 0.5秒ごとにナイフを発射
+bullet.bullet_interval = 0.5 -- 0.5秒ごとにナイフを発射
 local bullet_timer = 0
 
 function bullet.update(dt, player, enemy)
     -- ナイフの発射
     bullet_timer = bullet_timer + dt
-    if bullet_timer >= bullet_interval then
+    if bullet_timer >= bullet.bullet_interval then
         table.insert(bullet.bullets, { x = player.x, y = player.y, angle = math.random() * math.pi * 2 }) -- 全方向に発射
         bullet_timer = 0
     end
@@ -39,10 +39,8 @@ function bullet.update(dt, player, enemy)
                     table.remove(enemy.enemies, j) -- 敵を削除
                     player.xp = player.xp + 1 -- 経験値獲得
                     if player.xp >= player.xp_to_next_level then
-                        player.level = player.level + 1
-                        player.xp = player.xp - player.xp_to_next_level
-                        player.xp_to_next_level = math.floor(player.xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
-                        bullet_interval = math.max(0.1, bullet_interval - 0.1) -- レベルアップでナイフ発射間隔を短縮
+                        -- レベルアップは game_state で処理するため、ここでは経験値の加算のみ
+                        player.xp = player.xp + 1
                     end
                 else -- current_enemy.type == "plus"
                     table.remove(bullet.bullets, i) -- ナイフを削除
