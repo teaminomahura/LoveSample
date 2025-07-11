@@ -11,7 +11,7 @@ function bullet.update(dt, player, enemy)
     -- ナイフの発射
     bullet_timer = bullet_timer + dt
     if bullet_timer >= bullet.bullet_interval then
-        table.insert(bullet.bullets, { x = player.x, y = player.y, angle = math.random() * math.pi * 2 }) -- 全方向に発射
+        table.insert(bullet.bullets, { x = player.x, y = player.y, angle = math.random() * math.pi * 2, lifetime = 0.5 }) -- 全方向に発射、寿命0.5秒
         bullet_timer = 0
     end
 
@@ -21,8 +21,8 @@ function bullet.update(dt, player, enemy)
         current_bullet.x = current_bullet.x + math.cos(current_bullet.angle) * bullet_speed * dt
         current_bullet.y = current_bullet.y + math.sin(current_bullet.angle) * bullet_speed * dt
 
-        -- 画面外に出たら削除
-        if current_bullet.x < -20 or current_bullet.x > 1280 + 20 or current_bullet.y < -20 or current_bullet.y > 720 + 20 then
+        current_bullet.lifetime = current_bullet.lifetime - dt
+        if current_bullet.lifetime <= 0 then
             table.remove(bullet.bullets, i)
         end
     end

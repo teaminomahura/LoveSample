@@ -26,9 +26,7 @@ function player.update(dt)
         player.x = player.x + player.speed * dt
     end
 
-    -- 画面外に出ないように制限
-    player.x = math.max(0, math.min(player.x, 1280))
-    player.y = math.max(0, math.min(player.y, 720))
+    
 end
 
 function player.draw()

@@ -4,28 +4,33 @@ local enemy = {}
 
 enemy.enemies = {}
 local enemy_speed = 100
-local enemy_spawn_interval = 1 -- 1秒ごとに敵を生成
+local enemy_spawn_interval = 0.5 -- 0.5秒ごとに敵を生成 (短縮)
 local enemy_spawn_timer = 0
 local green_enemy_spawn_chance = 0.2 -- 緑の敵の生成確率 (20%)
+local max_enemies = 50 -- 画面内に存在できる敵の最大数
 
 function enemy.update(dt, player)
     -- 敵の生成
     enemy_spawn_timer = enemy_spawn_timer + dt
-    if enemy_spawn_timer >= enemy_spawn_interval then
+    if enemy_spawn_timer >= enemy_spawn_interval and #enemy.enemies < max_enemies then
         local spawn_x, spawn_y
+        local off_screen_buffer = 50 -- 画面外からの生成バッファ
+        local screen_width = love.graphics.getWidth()
+        local screen_height = love.graphics.getHeight()
+
         local side = math.random(1, 4) -- 1:上, 2:右, 3:下, 4:左
         if side == 1 then -- 上
-            spawn_x = math.random(0, 1280)
-            spawn_y = -50
+            spawn_x = player.x + math.random(-screen_width / 2, screen_width / 2)
+            spawn_y = player.y - screen_height / 2 - off_screen_buffer
         elseif side == 2 then -- 右
-            spawn_x = 1280 + 50
-            spawn_y = math.random(0, 720)
+            spawn_x = player.x + screen_width / 2 + off_screen_buffer
+            spawn_y = player.y + math.random(-screen_height / 2, screen_height / 2)
         elseif side == 3 then -- 下
-            spawn_x = math.random(0, 1280)
-            spawn_y = 720 + 50
+            spawn_x = player.x + math.random(-screen_width / 2, screen_width / 2)
+            spawn_y = player.y + screen_height / 2 + off_screen_buffer
         else -- 左
-            spawn_x = -50
-            spawn_y = math.random(0, 720)
+            spawn_x = player.x - screen_width / 2 - off_screen_buffer
+            spawn_y = player.y + math.random(-screen_height / 2, screen_height / 2)
         end
 
         local enemy_type = "minus" -- デフォルトはマイナス属性
@@ -77,6 +82,17 @@ function enemy.update(dt, player)
             player.invincible_timer = 0.1 -- 0.1秒間無敵
             table.remove(enemy.enemies, i) -- 敵を削除
             
+        end
+    end
+
+    -- プレイヤーから一定以上離れた敵を削除 (デスポーン)
+    for i = #enemy.enemies, 1, -1 do
+        local current_enemy = enemy.enemies[i]
+        local dist_sq = (current_enemy.x - player.x)^2 + (current_enemy.y - player.y)^2
+        local despawn_distance_sq = (love.graphics.getWidth() * 1.5)^2 -- 画面の1.5倍の距離でデスポーン
+
+        if dist_sq > despawn_distance_sq then
+            table.remove(enemy.enemies, i)
         end
     end
 

@@ -6,6 +6,7 @@ local game_state = require("game_state")
 local upgrade = require("upgrade")
 local i18n = require("i18n")
 local timer = require("timer")
+local camera = require("camera")
 
 
 
@@ -35,14 +36,20 @@ function love.update(dt)
         enemy.update(dt, player)
         bullet.update(dt, player, enemy)
         timer.update(dt)
+        camera.update(player.x, player.y)
     end
 end
 
 function love.draw()
     if game_state.current_state == game_state.states.PLAYING then
+        camera.set_world_transform()
+
         player.draw()
         enemy.draw()
         bullet.draw()
+
+        camera.unset_world_transform()
+
         timer.draw()
 
         -- HPの表示
