@@ -1,6 +1,7 @@
 local utils = require("utils")
 
 local enemy = {}
+local enemies_data = require("config.enemies")
 
 enemy.enemies = {}
 local enemy_speed = 100
@@ -33,11 +34,12 @@ function enemy.update(dt, player)
             spawn_y = player.y + math.random(-screen_height / 2, screen_height / 2)
         end
 
-        local enemy_type = "minus" -- デフォルトはマイナス属性
+        local enemy_type_key = "minus_enemy" -- デフォルトはマイナス属性
         if math.random() < green_enemy_spawn_chance then
-            enemy_type = "plus" -- 緑の敵を生成
+            enemy_type_key = "plus_enemy" -- 緑の敵を生成
         end
-        table.insert(enemy.enemies, { x = spawn_x, y = spawn_y, hp = 1, type = enemy_type }) -- 敵を生成
+        local new_enemy_data = enemies_data[enemy_type_key]
+        table.insert(enemy.enemies, { x = spawn_x, y = spawn_y, hp = new_enemy_data.hp, type = enemy_type_key, speed = new_enemy_data.speed }) -- 敵を生成
         enemy_spawn_timer = 0
     end
 
@@ -46,14 +48,14 @@ function enemy.update(dt, player)
         local current_enemy = enemy.enemies[i]
         local target_x, target_y
 
-        if current_enemy.type == "minus" then
+        if current_enemy.type == "minus_enemy" then
             target_x, target_y = player.x, player.y -- 赤い敵はプレイヤーを追跡
-        else -- current_enemy.type == "plus"
+        else -- current_enemy.type == "plus_enemy"
             -- 最も近い赤い敵を追跡
             local closest_minus_enemy = nil
             local min_dist_sq = math.huge
             for k, other_enemy in ipairs(enemy.enemies) do
-                if other_enemy.type == "minus" then
+                if other_enemy.type == "minus_enemy" then
                     local dist_sq = (current_enemy.x - other_enemy.x)^2 + (current_enemy.y - other_enemy.y)^2
                     if dist_sq < min_dist_sq then
                         min_dist_sq = dist_sq
@@ -69,14 +71,14 @@ function enemy.update(dt, player)
         end
 
         local angle = math.atan2(target_y - current_enemy.y, target_x - current_enemy.x)
-        current_enemy.x = current_enemy.x + math.cos(angle) * enemy_speed * dt
-        current_enemy.y = current_enemy.y + math.sin(angle) * enemy_speed * dt
+        current_enemy.x = current_enemy.x + math.cos(angle) * current_enemy.speed * dt
+        current_enemy.y = current_enemy.y + math.sin(angle) * current_enemy.speed * dt
 
         -- 敵とプレイヤーの衝突判定
         if player.invincible_timer <= 0 and utils.checkCollision(player.x - 10, player.y - 10, 20, 20, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
-            if current_enemy.type == "minus" then
+            if current_enemy.type == "minus_enemy" then
                 player.hp = player.hp - 1 -- プレイヤーにダメージ
-            else -- current_enemy.type == "plus"
+            else -- current_enemy.type == "plus_enemy"
                 player.hp = player.hp + 1 -- プレイヤーを回復
             end
             player.invincible_timer = 0.1 -- 0.1秒間無敵
@@ -146,10 +148,10 @@ end
 function enemy.draw()
     -- 敵の描画
     for i, current_enemy in ipairs(enemy.enemies) do
-        if current_enemy.type == "minus" then
-            love.graphics.setColor(0, 0, 1, 1) -- 青に設定 (赤い敵)
-        else -- current_enemy.type == "plus"
-            love.graphics.setColor(0, 1, 0, 1) -- 緑に設定 (回復する敵)
+        if current_enemy.type == "minus_enemy" then
+            love.graphics.setColor(enemies_data.minus_enemy.color) -- 青に設定 (赤い敵)
+        else -- current_enemy.type == "plus_enemy"
+            love.graphics.setColor(enemies_data.plus_enemy.color) -- 緑に設定 (回復する敵)
         end
         love.graphics.rectangle("fill", current_enemy.x - 10, current_enemy.y - 10, 20, 20) -- 敵を四角で描画
     end
@@ -157,6 +159,7 @@ end
 
 function enemy.reset()
     enemy.enemies = {}
+    enemy_spawn_timer = 0
 end
 
 return enemy

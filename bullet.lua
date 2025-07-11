@@ -1,4 +1,5 @@
 local utils = require("utils")
+local enemies_data = require("config.enemies")
 
 local bullet = {}
 
@@ -34,20 +35,16 @@ function bullet.update(dt, player, enemy)
             local current_enemy = enemy.enemies[j]
             if utils.checkCollision(current_bullet.x - 5, current_bullet.y - 5, 10, 10, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
                 -- ナイフはプラス属性なので、マイナス属性の敵を倒し、プラス属性の敵は消滅させる
-                if current_enemy.type == "minus" then
+                if current_enemy.type == "minus_enemy" then
                     table.remove(bullet.bullets, i) -- ナイフを削除
                     table.remove(enemy.enemies, j) -- 敵を削除
                     player.xp = player.xp + 1 -- 経験値獲得
-                    if player.xp >= player.xp_to_next_level then
-                        -- レベルアップは game_state で処理するため、ここでは経験値の加算のみ
-                        player.xp = player.xp + 1
-                    end
-                else -- current_enemy.type == "plus"
+                elseif current_enemy.type == "plus_enemy" then -- 緑の敵の場合
                     table.remove(bullet.bullets, i) -- ナイフを削除
                     table.remove(enemy.enemies, j) -- 元の緑の敵を削除
                     -- 緑の敵を分裂させる
-                    table.insert(enemy.enemies, { x = current_enemy.x + 15, y = current_enemy.y, hp = 1, type = "plus" })
-                    table.insert(enemy.enemies, { x = current_enemy.x - 15, y = current_enemy.y, hp = 1, type = "plus" })
+                    table.insert(enemy.enemies, { x = current_enemy.x + 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed })
+                    table.insert(enemy.enemies, { x = current_enemy.x - 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed })
                     -- 経験値は入らない
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
