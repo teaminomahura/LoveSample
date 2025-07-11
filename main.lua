@@ -12,6 +12,12 @@ local upgrade = require("upgrade")
 function love.load()
     love.window.setMode(1280, 720, { fullscreen = false, resizable = false, vsync = true })
     love.window.setTitle("Vampire Survivors Clone")
+
+    -- 日本語フォントの読み込みと設定
+    local font_path = "assets/fonts/MPLUS_FONTS-master/fonts/ttf/Mplus1Code-Regular.ttf"
+    local font_size = 20 -- フォントサイズを調整
+    local japanese_font = love.graphics.newFont(font_path, font_size)
+    love.graphics.setFont(japanese_font)
 end
 
 

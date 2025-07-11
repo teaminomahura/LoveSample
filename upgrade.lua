@@ -29,7 +29,7 @@ end
 
 function upgrade.draw()
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.printf("LEVEL UP! Choose an upgrade:", 0, love.graphics.getHeight() / 2 - 100, love.graphics.getWidth(), "center")
+    love.graphics.printf("レベルアップ アップグレードを選んでください", 0, love.graphics.getHeight() / 2 - 100, love.graphics.getWidth(), "center")
 
     for i, choice_key in ipairs(upgrade.choices) do
         local upgrade_info = upgrades_data[choice_key]
