@@ -1,4 +1,8 @@
-local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 20, xp = 0, level = 1, invincible_timer = 0 }
+local player = require("player")
+local enemy = require("enemy")
+
+
+
 local bullets = {}
 local bullet_speed = 500
 local bullet_interval = 0.5 -- 0.5秒ごとにナイフを発射
@@ -24,28 +28,10 @@ function checkCollision(x1, y1, w1, h1, x2, y2, w2, h2)
 end
 
 function love.update(dt)
-    -- プレイヤーの無敵時間更新
-    if player.invincible_timer > 0 then
-        player.invincible_timer = player.invincible_timer - dt
-    end
+    player.update(dt)
+    enemy.update(dt, player)
 
-    -- プレイヤーの移動
-    if love.keyboard.isDown("w", "up") then
-        player.y = player.y - player.speed * dt
-    end
-    if love.keyboard.isDown("s", "down") then
-        player.y = player.y + player.speed * dt
-    end
-    if love.keyboard.isDown("a", "left") then
-        player.x = player.x - player.speed * dt
-    end
-    if love.keyboard.isDown("d", "right") then
-        player.x = player.x + player.speed * dt
-    end
-
-    -- 画面外に出ないように制限
-    player.x = math.max(0, math.min(player.x, 1280))
-    player.y = math.max(0, math.min(player.y, 720))
+    
 
     -- ナイフの発射
     bullet_timer = bullet_timer + dt
@@ -142,13 +128,13 @@ function love.update(dt)
     -- ナイフと敵の衝突判定
     for i = #bullets, 1, -1 do
         local bullet = bullets[i]
-        for j = #enemies, 1, -1 do
-            local enemy = enemies[j]
-            if checkCollision(bullet.x - 5, bullet.y - 5, 10, 10, enemy.x - 10, enemy.y - 10, 20, 20) then
+        for j = #enemy.enemies, 1, -1 do
+            local current_enemy = enemy.enemies[j]
+            if checkCollision(bullet.x - 5, bullet.y - 5, 10, 10, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
                 -- ナイフはプラス属性なので、マイナス属性の敵を倒し、プラス属性の敵は消滅させる
-                if enemy.type == "minus" then
+                if current_enemy.type == "minus" then
                     table.remove(bullets, i) -- ナイフを削除
-                    table.remove(enemies, j) -- 敵を削除
+                    table.remove(enemy.enemies, j) -- 敵を削除
                     player.xp = player.xp + 1 -- 経験値獲得
                     if player.xp >= xp_to_next_level then
                         player.level = player.level + 1
@@ -156,12 +142,12 @@ function love.update(dt)
                         xp_to_next_level = math.floor(xp_to_next_level * 1.5) -- 次のレベルに必要な経験値を増加
                         bullet_interval = math.max(0.1, bullet_interval - 0.1) -- レベルアップでナイフ発射間隔を短縮
                     end
-                else -- enemy.type == "plus"
+                else -- current_enemy.type == "plus"
                     table.remove(bullets, i) -- ナイフを削除
-                    table.remove(enemies, j) -- 元の緑の敵を削除
+                    table.remove(enemy.enemies, j) -- 元の緑の敵を削除
                     -- 緑の敵を分裂させる
-                    table.insert(enemies, { x = enemy.x + 15, y = enemy.y, hp = 1, type = "plus" })
-                    table.insert(enemies, { x = enemy.x - 15, y = enemy.y, hp = 1, type = "plus" })
+                    table.insert(enemy.enemies, { x = current_enemy.x + 15, y = current_enemy.y, hp = 1, type = "plus" })
+                    table.insert(enemy.enemies, { x = current_enemy.x - 15, y = current_enemy.y, hp = 1, type = "plus" })
                     -- 経験値は入らない
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
@@ -190,8 +176,10 @@ function love.update(dt)
 end
 
 function love.draw()
-    love.graphics.setColor(1, 1, 1, 1) -- 白に設定
-    love.graphics.rectangle("fill", player.x - 10, player.y - 10, 20, 20) -- プレイヤーを四角で描画
+    player.draw()
+    enemy.draw()
+
+    
 
     -- ナイフの描画
     love.graphics.setColor(1, 0, 0, 1) -- 赤に設定
