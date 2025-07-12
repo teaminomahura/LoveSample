@@ -183,10 +183,36 @@ function enemy.update(dt, player)
                 elseif (enemy1.type == "minus_enemy" and enemy2.type == "plus_enemy") or (enemy2.type == "minus_enemy" and enemy1.type == "plus_enemy") then
                     enemies_to_remove[i] = true
                     enemies_to_remove[j] = true
-                end
-            end
-        end
-    end
+                -- Rule 5: ÷敵 vs マイナス敵
+                elseif (enemy1.type == "divide_enemy" and enemy2.type == "minus_enemy") then
+                    enemies_to_remove[i] = true -- Remove divide_enemy
+                    enemy2.level = math.max(enemy2.level - 1, 0) -- Decrement minus_enemy level, min 0
+                    if enemy2.level == 0 then
+                        enemies_to_remove[j] = true -- Remove minus_enemy if level is 0
+                    end
+                elseif (enemy2.type == "divide_enemy" and enemy1.type == "minus_enemy") then
+                    enemies_to_remove[j] = true -- Remove divide_enemy
+                    enemy1.level = math.max(enemy1.level - 1, 0) -- Decrement minus_enemy level, min 0
+                    if enemy1.level == 0 then
+                        enemies_to_remove[i] = true -- Remove minus_enemy if level is 0
+                    end
+                -- Rule 6: ÷敵 vs プラス敵
+                elseif (enemy1.type == "divide_enemy" and enemy2.type == "plus_enemy") then
+                    enemies_to_remove[i] = true -- Remove divide_enemy
+                    local enemy_types = {"minus_enemy", "plus_enemy", "multiply_enemy", "divide_enemy"}
+                    local random_enemy_type = enemy_types[math.random(#enemy_types)]
+                    local new_enemy_data = enemies_data[random_enemy_type]
+                    local offset_dist = 20
+                    table.insert(enemy.enemies, { x = enemy2.x, y = enemy2.y - offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
+                    table.insert(enemy.enemies, { x = enemy2.x, y = enemy2.y + offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
+                elseif (enemy2.type == "divide_enemy" and enemy1.type == "plus_enemy") then
+                    enemies_to_remove[j] = true -- Remove divide_enemy
+                    local enemy_types = {"minus_enemy", "plus_enemy", "multiply_enemy", "divide_enemy"}
+                    local random_enemy_type = enemy_types[math.random(#enemy_types)]
+                    local new_enemy_data = enemies_data[random_enemy_type]
+                    local offset_dist = 20
+                    table.insert(enemy.enemies, { x = enemy1.x, y = enemy1.y - offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
+                    table.insert(enemy.enemies, { x = enemy1.x, y = enemy1.y + offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
 
     -- Remove enemies marked for removal
     for i = #enemy.enemies, 1, -1 do
