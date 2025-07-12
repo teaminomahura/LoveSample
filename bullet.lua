@@ -34,7 +34,6 @@ function bullet.update(dt, player, enemy)
         for j = #enemy.enemies, 1, -1 do
             local current_enemy = enemy.enemies[j]
             if utils.checkCollision(current_bullet.x - 5, current_bullet.y - 5, 10, 10, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
-                -- ナイフはプラス属性なので、マイナス属性の敵を倒し、プラス属性の敵は消滅させる
                 if current_enemy.type == "minus_enemy" then
                     table.remove(bullet.bullets, i) -- ナイフを削除
                     table.remove(enemy.enemies, j) -- 敵を削除
@@ -43,9 +42,23 @@ function bullet.update(dt, player, enemy)
                     table.remove(bullet.bullets, i) -- ナイフを削除
                     table.remove(enemy.enemies, j) -- 元の緑の敵を削除
                     -- 緑の敵を分裂させる
-                    table.insert(enemy.enemies, { x = current_enemy.x + 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed })
-                    table.insert(enemy.enemies, { x = current_enemy.x - 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed })
-                    -- 経験値は入らない
+                    table.insert(enemy.enemies, { x = current_enemy.x + 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed, cooldown = 0 })
+                    table.insert(enemy.enemies, { x = current_enemy.x - 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed, cooldown = 0 })
+                elseif current_enemy.type == "multiply_enemy" and current_enemy.cooldown <= 0 then -- ×敵の処理 (クールダウンチェック)
+                    table.remove(bullet.bullets, i) -- 元の弾を削除
+                    current_enemy.cooldown = 0.5 -- 0.5秒のクールダウンを設定
+                    -- 斜め四方向に新しい弾を発射
+                    local base_angle = math.pi / 4 -- 45度
+                    for k=0, 3 do
+                        table.insert(bullet.bullets, { x = current_enemy.x, y = current_enemy.y, angle = base_angle + (k * math.pi / 2), lifetime = 0.5 })
+                    end
+                elseif current_enemy.type == "divide_enemy" and current_enemy.cooldown <= 0 then -- ÷敵の処理 (クールダウンチェック)
+                    table.remove(bullet.bullets, i) -- 元の弾を削除
+                    current_enemy.cooldown = 0.5 -- 0.5秒のクールダウンを設定
+                    -- 上下にマイナス敵を生成
+                    local minus_enemy_data = enemies_data.minus_enemy
+                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y - 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0 })
+                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y + 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0 })
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
             end
@@ -55,7 +68,7 @@ end
 
 function bullet.draw()
     -- ナイフの描画
-    love.graphics.setColor(1, 0, 0, 1) -- 赤に設定
+    love.graphics.setColor(1, 1, 1, 1) -- 白に設定（弾の色は一旦白で統一）
     for i, current_bullet in ipairs(bullet.bullets) do
         love.graphics.rectangle("fill", current_bullet.x - 5, current_bullet.y - 5, 10, 10) -- ナイフを小さな四角で描画
     end

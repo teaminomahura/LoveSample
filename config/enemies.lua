@@ -11,12 +11,18 @@ local enemies_data = {
         hp = 1,
         color = {0, 1, 0, 1}, -- R, G, B, A
     },
-    -- 将来的に新しい敵をここに追加
-    -- new_enemy_type = {
-    --     speed = 120,
-    --     hp = 2,
-    --     color = {1, 0, 0, 1},
-    -- },
+    -- ×（かける）敵
+    multiply_enemy = {
+        speed = 100,
+        hp = 1,
+        color = {1, 0, 0, 1}, -- R, G, B, A (赤)
+    },
+    -- ÷（わる）敵
+    divide_enemy = {
+        speed = 100,
+        hp = 1,
+        color = {0.5, 0, 0.5, 1}, -- R, G, B, A (紫)
+    },
 }
 
 return enemies_data

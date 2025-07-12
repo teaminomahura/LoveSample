@@ -8,14 +8,8 @@ local i18n = require("i18n")
 local timer = require("timer")
 local camera = require("camera")
 
-
-
-
-
 function love.load()
-    love.window.setMode(1280, 720, { fullscreen = false, resizable = false, vsync = true })
-    love.window.setTitle("Vampire Survivors Clone")
-
+    -- ウィンドウ設定は conf.lua に移行
     -- 日本語フォントの読み込みと設定
     local font_path = "assets/fonts/MPLUS_FONTS-master/fonts/ttf/Mplus1Code-Regular.ttf"
     local font_size = 20 -- フォントサイズを調整
@@ -26,9 +20,12 @@ function love.load()
     i18n.set_locale("ja")
 end
 
-
-
 function love.update(dt)
+    -- ポーズ中は update をスキップ
+    if game_state.current_state == game_state.states.PAUSED then
+        return
+    end
+
     game_state.update(dt, player, bullet, upgrade)
 
     if game_state.current_state == game_state.states.PLAYING then
@@ -41,7 +38,8 @@ function love.update(dt)
 end
 
 function love.draw()
-    if game_state.current_state == game_state.states.PLAYING then
+    -- 描画はポーズ中でも行う
+    if game_state.current_state == game_state.states.PLAYING or game_state.current_state == game_state.states.PAUSED then
         camera.set_world_transform()
 
         player.draw()
@@ -63,12 +61,18 @@ function love.draw()
         upgrade.draw()
     end
 
-    game_state.draw()
+    game_state.draw() -- ゲームオーバーやポーズ画面の描画
 end
 
 function love.keypressed(key)
     if key == "escape" then
         love.event.quit()
+    elseif key == "p" then -- Pキーでポーズ/再開
+        if game_state.current_state == game_state.states.PLAYING then
+            game_state.current_state = game_state.states.PAUSED
+        elseif game_state.current_state == game_state.states.PAUSED then
+            game_state.current_state = game_state.states.PLAYING
+        end
     elseif key == "r" and game_state.current_state == game_state.states.GAME_OVER then
         player.reset()
         enemy.reset()
