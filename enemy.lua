@@ -46,7 +46,11 @@ function enemy.update(dt, player)
         end
         
         local new_enemy_data = enemies_data[enemy_type_key]
-        table.insert(enemy.enemies, { x = spawn_x, y = spawn_y, hp = new_enemy_data.hp, type = enemy_type_key, speed = new_enemy_data.speed, cooldown = 0 }) -- 敵を生成 (クールダウンを追加)
+        local new_enemy = { x = spawn_x, y = spawn_y, hp = new_enemy_data.hp, type = enemy_type_key, speed = new_enemy_data.speed, cooldown = 0, level = 0 } -- levelをデフォルトで0に初期化
+        if enemy_type_key == "minus_enemy" then
+            new_enemy.level = 1 -- マイナス敵にレベルを追加
+        end
+        table.insert(enemy.enemies, new_enemy) -- 敵を生成
         enemy_spawn_timer = 0
     end
 
@@ -143,19 +147,48 @@ function enemy.update(dt, player)
         end
     end
 
-    -- 敵同士の衝突判定 (異なる種類の敵が当たると両方消滅 - 仮仕様)
+    -- 敵同士の衝突判定
     local enemies_to_remove = {}
     for i = 1, #enemy.enemies do
         local enemy1 = enemy.enemies[i]
         for j = i + 1, #enemy.enemies do
             local enemy2 = enemy.enemies[j]
-            if enemy1.type ~= enemy2.type and utils.checkCollision(enemy1.x - 10, enemy1.y - 10, 20, 20, enemy2.x - 10, enemy2.y - 10, 20, 20) then
-                enemies_to_remove[i] = true
-                enemies_to_remove[j] = true
+
+            if utils.checkCollision(enemy1.x - 10, enemy1.y - 10, 20, 20, enemy2.x - 10, enemy2.y - 10, 20, 20) then
+                -- Rule 1: ×敵 vs マイナス敵
+                if (enemy1.type == "multiply_enemy" and enemy2.type == "minus_enemy") then
+                    enemies_to_remove[i] = true -- Remove multiply_enemy
+                    enemy2.level = math.min(enemy2.level + 1, 5) -- Increment minus_enemy level, max 5
+                elseif (enemy2.type == "multiply_enemy" and enemy1.type == "minus_enemy") then
+                    enemies_to_remove[j] = true -- Remove multiply_enemy
+                    enemy1.level = math.min(enemy1.level + 1, 5) -- Increment minus_enemy level, max 5
+                -- Rule 2: ×敵 vs プラス敵
+                elseif (enemy1.type == "multiply_enemy" and enemy2.type == "plus_enemy" and enemy2.cooldown <= 0) then
+                    enemies_to_remove[i] = true -- Remove multiply_enemy
+                    enemy2.cooldown = 0.5 -- クールダウンを設定
+                    local plus_enemy_data = enemies_data.plus_enemy
+                    -- 1体のプラス敵を生成
+                    table.insert(enemy.enemies, { x = enemy2.x, y = enemy2.y, hp = plus_enemy_data.hp, type = "plus_enemy", speed = plus_enemy_data.speed, cooldown = 0, level = 0 })
+                elseif (enemy2.type == "multiply_enemy" and enemy1.type == "plus_enemy" and enemy1.cooldown <= 0) then
+                    enemies_to_remove[j] = true -- Remove multiply_enemy
+                    enemy1.cooldown = 0.5 -- クールダウンを設定
+                    local plus_enemy_data = enemies_data.plus_enemy
+                    -- 1体のプラス敵を生成
+                    table.insert(enemy.enemies, { x = enemy1.x, y = enemy1.y, hp = plus_enemy_data.hp, type = "plus_enemy", speed = plus_enemy_data.speed, cooldown = 0, level = 0 })
+                -- Rule 3: ×敵 vs ÷敵
+                elseif (enemy1.type == "multiply_enemy" and enemy2.type == "divide_enemy") or (enemy2.type == "multiply_enemy" and enemy1.type == "divide_enemy") then
+                    enemies_to_remove[i] = true
+                    enemies_to_remove[j] = true
+                -- Rule 4: マイナス敵 vs プラス敵 (両方消滅)
+                elseif (enemy1.type == "minus_enemy" and enemy2.type == "plus_enemy") or (enemy2.type == "minus_enemy" and enemy1.type == "plus_enemy") then
+                    enemies_to_remove[i] = true
+                    enemies_to_remove[j] = true
+                end
             end
         end
     end
 
+    -- Remove enemies marked for removal
     for i = #enemy.enemies, 1, -1 do
         if enemies_to_remove[i] then
             table.remove(enemy.enemies, i)
@@ -173,6 +206,12 @@ function enemy.draw()
             love.graphics.setColor(1, 1, 1, 1) -- データがない場合は白
         end
         love.graphics.rectangle("fill", current_enemy.x - 10, current_enemy.y - 10, 20, 20) -- 敵を四角で描画
+
+        -- マイナス敵の場合、レベルを表示
+        if current_enemy.type == "minus_enemy" and current_enemy.level then
+            love.graphics.setColor(1, 1, 1, 1) -- 白い文字
+            love.graphics.printf(tostring(current_enemy.level), current_enemy.x - 10, current_enemy.y - 12, 20, "center")
+        end
     end
 end
 

@@ -38,12 +38,13 @@ function bullet.update(dt, player, enemy)
                     table.remove(bullet.bullets, i) -- ナイフを削除
                     table.remove(enemy.enemies, j) -- 敵を削除
                     player.xp = player.xp + 1 -- 経験値獲得
-                elseif current_enemy.type == "plus_enemy" then -- 緑の敵の場合
+                elseif current_enemy.type == "plus_enemy" and current_enemy.cooldown <= 0 then -- 緑の敵の場合 (クールダウンチェック)
                     table.remove(bullet.bullets, i) -- ナイフを削除
                     table.remove(enemy.enemies, j) -- 元の緑の敵を削除
+                    current_enemy.cooldown = 0.5 -- 0.5秒のクールダウンを設定
                     -- 緑の敵を分裂させる
-                    table.insert(enemy.enemies, { x = current_enemy.x + 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed, cooldown = 0 })
-                    table.insert(enemy.enemies, { x = current_enemy.x - 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed, cooldown = 0 })
+                    table.insert(enemy.enemies, { x = current_enemy.x + 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed, cooldown = 0, level = 0 })
+                    table.insert(enemy.enemies, { x = current_enemy.x - 15, y = current_enemy.y, hp = 1, type = "plus_enemy", speed = enemies_data.plus_enemy.speed, cooldown = 0, level = 0 })
                 elseif current_enemy.type == "multiply_enemy" and current_enemy.cooldown <= 0 then -- ×敵の処理 (クールダウンチェック)
                     table.remove(bullet.bullets, i) -- 元の弾を削除
                     current_enemy.cooldown = 0.5 -- 0.5秒のクールダウンを設定
@@ -57,8 +58,8 @@ function bullet.update(dt, player, enemy)
                     current_enemy.cooldown = 0.5 -- 0.5秒のクールダウンを設定
                     -- 上下にマイナス敵を生成
                     local minus_enemy_data = enemies_data.minus_enemy
-                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y - 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0 })
-                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y + 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0 })
+                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y - 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0, level = 1 })
+                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y + 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0, level = 1 })
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
             end
