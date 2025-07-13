@@ -116,8 +116,70 @@ function enemy.update(dt, player)
         local target_x, target_y
 
         if current_enemy.type == "minus_enemy" then
-            target_x, target_y = player.x, player.y
-        else
+            target_x, target_y = player.x, player.y -- マイナス敵はプレイヤーを追跡
+        elseif current_enemy.type == "divide_enemy" then
+            -- ÷敵は×敵を追いかける
+            local closest_multiply_enemy = nil
+            local min_dist_sq = math.huge
+            for k, other_enemy in ipairs(enemy.enemies) do
+                if other_enemy.type == "multiply_enemy" then
+                    local dist_sq = (current_enemy.x - other_enemy.x)^2 + (current_enemy.y - other_enemy.y)^2
+                    if dist_sq < min_dist_sq then
+                        min_dist_sq = dist_sq
+                        closest_multiply_enemy = other_enemy
+                    end
+                end
+            end
+            if closest_multiply_enemy then
+                target_x, target_y = closest_multiply_enemy.x, closest_multiply_enemy.y
+            else
+                -- ×敵がいなければ、最も近いマイナス敵を追いかける
+                local closest_minus_enemy = nil
+                local min_dist_sq_minus = math.huge
+                for k, other_enemy in ipairs(enemy.enemies) do
+                    if other_enemy.type == "minus_enemy" then
+                        local dist_sq_minus = (current_enemy.x - other_enemy.x)^2 + (current_enemy.y - other_enemy.y)^2
+                        if dist_sq_minus < min_dist_sq_minus then
+                            min_dist_sq_minus = dist_sq_minus
+                            closest_minus_enemy = other_enemy
+                        end
+                    end
+                end
+                if closest_minus_enemy then
+                    target_x, target_y = closest_minus_enemy.x, closest_minus_enemy.y
+                else
+                    target_x, target_y = player.x, player.y -- それもいなければプレイヤーを追跡
+                end
+            end
+        elseif current_enemy.type == "multiply_enemy" then
+            local closest_minus_enemy = nil
+            local min_dist_sq_minus = math.huge
+            for k, other_enemy in ipairs(enemy.enemies) do
+                if other_enemy.type == "minus_enemy" then
+                    local dist_sq = (current_enemy.x - other_enemy.x)^2 + (current_enemy.y - other_enemy.y)^2
+                    if dist_sq < min_dist_sq_minus then
+                        min_dist_sq_minus = dist_sq
+                        closest_minus_enemy = other_enemy
+                    end
+                end
+            end
+
+            if closest_minus_enemy then
+                local dist_to_player_sq = (current_enemy.x - player.x)^2 + (current_enemy.y - player.y)^2
+                -- マイナス敵がプレイヤーより近い場合、マイナス敵を追いかける
+                if min_dist_sq_minus < dist_to_player_sq then
+                    target_x, target_y = closest_minus_enemy.x, closest_minus_enemy.y
+                else
+                    -- プレイヤーがマイナス敵より近い場合、プレイヤーから逃げる
+                    target_x = current_enemy.x + (current_enemy.x - player.x) * 100
+                    target_y = current_enemy.y + (current_enemy.y - player.y) * 100
+                end
+            else
+                -- マイナス敵がいない場合、プレイヤーから逃げる
+                target_x = current_enemy.x + (current_enemy.x - player.x) * 100
+                target_y = current_enemy.y + (current_enemy.y - player.y) * 100
+            end
+        else -- それ以外の敵は、現時点では最も近いマイナス敵を追う（仮）
             local closest_minus_enemy = nil
             local min_dist_sq = math.huge
             for k, other_enemy in ipairs(enemy.enemies) do
@@ -132,7 +194,7 @@ function enemy.update(dt, player)
             if closest_minus_enemy then
                 target_x, target_y = closest_minus_enemy.x, closest_minus_enemy.y
             else
-                target_x, target_y = player.x, player.y
+                target_x, target_y = player.x, player.y -- マイナス敵がいなければプレイヤーを追跡
             end
         end
 

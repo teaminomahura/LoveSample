@@ -6,13 +6,13 @@ editor.enabled = true
 -- [敵を記入する場所] このリストに書かれた敵だけが出現するようになります。
 -- 空っぽ（{}）にしておくと、通常の出現率（spawn_rates）に従います。
 editor.enemy_spawn_list = {
+    "multiply_enemy",
     "minus_enemy",
-    "divide_enemy",
 }
 
 -- [敵のレベルを強制指定] 特定の敵を、指定したレベルで強制的に出現させます。
 editor.forced_enemy_levels = {
-    minus_enemy = 3,
+    -- minus_enemy = 3,
     -- plus_enemy = 2, -- 例えば、こんな風に他の敵も指定できます
 }
 
