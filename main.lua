@@ -9,7 +9,6 @@ local timer = require("timer")
 local camera = require("camera")
 
 function love.load()
-    -- ウィンドウ設定は conf.lua に移行
     -- 日本語フォントの読み込みと設定
     local font_path = "assets/fonts/MPLUS_FONTS-master/fonts/ttf/Mplus1Code-Regular.ttf"
     local font_size = 20 -- フォントサイズを調整
@@ -18,6 +17,9 @@ function love.load()
 
     -- 言語設定を日本語に
     i18n.set_locale("ja")
+
+    -- ゲームパラメータの初期化
+    game_state.reset_parameters()
 end
 
 function love.update(dt)
@@ -78,6 +80,7 @@ function love.keypressed(key)
         enemy.reset()
         bullet.reset()
         timer.reset()
+        game_state.reset_parameters() -- パラメータもリセット
         game_state.current_state = game_state.states.PLAYING
     elseif game_state.current_state == game_state.states.LEVEL_UP_CHOICE then
         if key == "up" then
@@ -85,7 +88,7 @@ function love.keypressed(key)
         elseif key == "down" then
             upgrade.selected_choice_index = math.min(#upgrade.choices, upgrade.selected_choice_index + 1)
         elseif key == "return" then -- Enterキー
-            upgrade.apply_choice(player, bullet)
+            upgrade.apply_choice(game_state)
             game_state.current_state = game_state.states.PLAYING
         end
     end

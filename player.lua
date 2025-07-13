@@ -1,6 +1,7 @@
 local utils = require("utils")
+local game_state = require("game_state")
 
-local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 5, xp = 0, level = 1, invincible_timer = 0, xp_to_next_level = 3 }
+local player = { x = 1280 / 2, y = 720 / 2, speed = 200, hp = 10, xp = 0, level = 1, invincible_timer = 0, xp_to_next_level = 3 }
 
 function player.load()
     -- プレイヤーに関する初期化（もしあれば）
@@ -37,7 +38,7 @@ end
 function player.reset()
     player.x = 1280 / 2
     player.y = 720 / 2
-    player.hp = 5
+    player.hp = game_state.parameters.player_initial_hp -- 司令塔から読み込む
     player.xp = 0
     player.level = 1
     player.invincible_timer = 0

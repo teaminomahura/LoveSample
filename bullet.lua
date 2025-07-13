@@ -1,17 +1,16 @@
 local utils = require("utils")
 local enemies_data = require("config.enemies")
+local game_state = require("game_state")
 
 local bullet = {}
 
 bullet.bullets = {}
-local bullet_speed = 500
-bullet.bullet_interval = 0.5 -- 0.5秒ごとにナイフを発射
 local bullet_timer = 0
 
 function bullet.update(dt, player, enemy)
     -- ナイフの発射
     bullet_timer = bullet_timer + dt
-    if bullet_timer >= bullet.bullet_interval then
+    if bullet_timer >= game_state.parameters.bullet_interval then
         table.insert(bullet.bullets, { x = player.x, y = player.y, angle = math.random() * math.pi * 2, lifetime = 0.5 }) -- 全方向に発射、寿命0.5秒
         bullet_timer = 0
     end
@@ -19,8 +18,8 @@ function bullet.update(dt, player, enemy)
     -- ナイフの移動と画面外での消滅
     for i = #bullet.bullets, 1, -1 do
         local current_bullet = bullet.bullets[i]
-        current_bullet.x = current_bullet.x + math.cos(current_bullet.angle) * bullet_speed * dt
-        current_bullet.y = current_bullet.y + math.sin(current_bullet.angle) * bullet_speed * dt
+        current_bullet.x = current_bullet.x + math.cos(current_bullet.angle) * game_state.parameters.bullet_speed * dt
+        current_bullet.y = current_bullet.y + math.sin(current_bullet.angle) * game_state.parameters.bullet_speed * dt
 
         current_bullet.lifetime = current_bullet.lifetime - dt
         if current_bullet.lifetime <= 0 then
@@ -55,11 +54,10 @@ function bullet.update(dt, player, enemy)
                     end
                 elseif current_enemy.type == "divide_enemy" and current_enemy.cooldown <= 0 then -- ÷敵の処理 (クールダウンチェック)
                     table.remove(bullet.bullets, i) -- 元の弾を削除
-                    current_enemy.cooldown = 0.5 -- 0.5秒のクールダウンを設定
-                    -- 上下にマイナス敵を生成
-                    local minus_enemy_data = enemies_data.minus_enemy
-                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y - 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0, level = 1 })
-                    table.insert(enemy.enemies, { x = current_enemy.x, y = current_enemy.y + 20, hp = minus_enemy_data.hp, type = "minus_enemy", speed = minus_enemy_data.speed, cooldown = 0, level = 1 })
+                    current_enemy.cooldown = game_state.parameters.enemy_cooldown_time -- 司令塔からクールダウン時間を取得
+                    -- 上下に新しい弾を分裂させる
+                    table.insert(bullet.bullets, { x = current_enemy.x, y = current_enemy.y, angle = -math.pi / 2, lifetime = 0.5 }) -- 上方向
+                    table.insert(bullet.bullets, { x = current_enemy.x, y = current_enemy.y, angle = math.pi / 2, lifetime = 0.5 }) -- 下方向
                 end
                 break -- 1つのナイフは1体の敵にしか当たらない
             end

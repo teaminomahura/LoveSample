@@ -20,11 +20,11 @@ function upgrade.generate_choices()
     upgrade.selected_choice_index = 1 -- 選択肢生成時にリセット
 end
 
-function upgrade.apply_choice(player_module, bullet_module)
+function upgrade.apply_choice(game_state)
     local chosen_upgrade_key = upgrade.choices[upgrade.selected_choice_index]
     local chosen_upgrade = upgrades_data[chosen_upgrade_key]
     if chosen_upgrade and chosen_upgrade.apply_effect then
-        chosen_upgrade.apply_effect(player_module, bullet_module)
+        chosen_upgrade.apply_effect(game_state)
     end
 end
 
