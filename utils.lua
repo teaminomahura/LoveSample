@@ -38,4 +38,18 @@ function utils.rebalance_spawn_rates(original_rates, target_key, new_rate)
     return new_rates
 end
 
+-- シンプルなクラス作成ヘルパー関数
+function utils.class(base)
+    local new_class = {}
+    new_class.__index = new_class
+
+    function new_class:new(...)
+        local instance = setmetatable({}, new_class)
+        if instance.init then instance:init(...) end
+        return instance
+    end
+
+    return new_class
+end
+
 return utils
