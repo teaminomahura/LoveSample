@@ -1,1 +1,9 @@
-feat: Implement test editor and integrate into enemy spawn logic. Fix divide enemy bullet interaction.
+feat: クラッシュ問題の根本解決と仕様変更
+
+長らく問題となっていた、特定の敵同士のインタラクション（特に「÷敵」と「+敵」）に起因する無限ループクラッシュを解決しました。
+
+主な変更点：
+- 「÷敵」と「+敵」の衝突仕様を変更：「÷敵」が分裂するのではなく、別の敵に「変化」するロジックに変更し、敵の無限増殖を根本的に防止。
+- 開発計画書（DEVELOPMENT_PLAN.md）を新しい仕様に合わせて更新。
+- デバッグを容易にするため、conf.luaにコンソール表示オプション（t.console = true）を恒久的に追加。
+- 過去の修正で実装した「生成後無敵時間」のロジックは、安定性のため引き続き維持。

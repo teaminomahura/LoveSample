@@ -5,4 +5,5 @@ function love.conf(t)
     t.window.fullscreen = false             -- フルスクリーンモードを無効に
     t.window.resizable = true               -- ウィンドウのリサイズを許可
     t.window.vsync = true                   -- 垂直同期を有効に
+    t.console = true                        -- デバッグコンソールを有効にする
 end

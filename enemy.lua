@@ -33,53 +33,26 @@ end
 
 -- 新しい敵を生成する内部関数
 local function spawnEnemy(player)
+    local enemy_type_key
+
     -- test_editorが有効な場合、その設定に従う
     if game_state.parameters.test_editor and game_state.parameters.test_editor.enabled then
         local editor_settings = game_state.parameters.test_editor
-        local enemy_type_key = nil
-
-        -- enemy_spawn_listが指定されている場合、その中からランダムに選択
         if #editor_settings.enemy_spawn_list > 0 then
             enemy_type_key = editor_settings.enemy_spawn_list[math.random(1, #editor_settings.enemy_spawn_list)]
-        else
-            -- 指定がない場合は通常の出現率に従う
-            local rand = math.random()
-            local cumulative_rate = 0
-            for type, rate in pairs(game_state.parameters.spawn_rates) do
-                cumulative_rate = cumulative_rate + rate
-                if rand <= cumulative_rate then
-                    enemy_type_key = type
-                    break
-                end
-            end
         end
-
-        if not enemy_type_key then return end -- Failsafe
-
-        local spawn_x, spawn_y = get_spawn_position(player)
-        local new_enemy_data = enemies_data[enemy_type_key]
-        local new_enemy = { x = spawn_x, y = spawn_y, hp = new_enemy_data.hp, type = enemy_type_key, speed = new_enemy_data.speed, cooldown = 0, level = 0 }
-
-        -- forced_enemy_levelsが指定されている場合、レベルを強制する
-        if editor_settings.forced_enemy_levels and editor_settings.forced_enemy_levels[enemy_type_key] ~= nil then
-            new_enemy.level = editor_settings.forced_enemy_levels[enemy_type_key]
-        elseif enemy_type_key == "minus_enemy" then
-            new_enemy.level = 1 -- デフォルトのマイナス敵レベル
-        end
-        table.insert(enemy.enemies, new_enemy)
-        return
     end
 
-    -- 通常の敵生成ロジック (test_editorが無効な場合)
-    local rand = math.random()
-    local cumulative_rate = 0
-    local enemy_type_key = nil
-
-    for type, rate in pairs(game_state.parameters.spawn_rates) do
-        cumulative_rate = cumulative_rate + rate
-        if rand <= cumulative_rate then
-            enemy_type_key = type
-            break
+    -- 通常の敵生成ロジック (test_editorが無効、またはspawn_listが空の場合)
+    if not enemy_type_key then
+        local rand = math.random()
+        local cumulative_rate = 0
+        for type, rate in pairs(game_state.parameters.spawn_rates) do
+            cumulative_rate = cumulative_rate + rate
+            if rand <= cumulative_rate then
+                enemy_type_key = type
+                break
+            end
         end
     end
 
@@ -87,10 +60,24 @@ local function spawnEnemy(player)
 
     local spawn_x, spawn_y = get_spawn_position(player)
     local new_enemy_data = enemies_data[enemy_type_key]
-    local new_enemy = { x = spawn_x, y = spawn_y, hp = new_enemy_data.hp, type = enemy_type_key, speed = new_enemy_data.speed, cooldown = 0, level = 0 }
-    if enemy_type_key == "minus_enemy" then
+    local new_enemy = {
+        x = spawn_x, y = spawn_y, hp = new_enemy_data.hp, type = enemy_type_key, 
+        speed = new_enemy_data.speed, cooldown = 0, level = 0,
+        invincibility_timer = new_enemy_data.spawn_invincibility_duration
+    }
+
+    -- test_editorが有効な場合、レベルを強制
+    if game_state.parameters.test_editor and game_state.parameters.test_editor.enabled then
+        local editor_settings = game_state.parameters.test_editor
+        if editor_settings.forced_enemy_levels and editor_settings.forced_enemy_levels[enemy_type_key] ~= nil then
+            new_enemy.level = editor_settings.forced_enemy_levels[enemy_type_key]
+        elseif enemy_type_key == "minus_enemy" then
+            new_enemy.level = 1 -- デフォルトのマイナス敵レベル
+        end
+    elseif enemy_type_key == "minus_enemy" then
         new_enemy.level = 1
     end
+
     table.insert(enemy.enemies, new_enemy)
 end
 
@@ -102,11 +89,14 @@ function enemy.update(dt, player)
         enemy_spawn_timer = 0
     end
 
-    -- 敵のクールダウン更新
+    -- 敵のタイマー更新 (クールダウンと無敵時間)
     for i = #enemy.enemies, 1, -1 do
         local current_enemy = enemy.enemies[i]
         if current_enemy.cooldown > 0 then
             current_enemy.cooldown = current_enemy.cooldown - dt
+        end
+        if current_enemy.invincibility_timer and current_enemy.invincibility_timer > 0 then
+            current_enemy.invincibility_timer = current_enemy.invincibility_timer - dt
         end
     end
 
@@ -115,10 +105,10 @@ function enemy.update(dt, player)
         local current_enemy = enemy.enemies[i]
         local target_x, target_y
 
+        -- (移動ロジックは変更なしのため省略)
         if current_enemy.type == "minus_enemy" then
-            target_x, target_y = player.x, player.y -- マイナス敵はプレイヤーを追跡
+            target_x, target_y = player.x, player.y
         elseif current_enemy.type == "divide_enemy" then
-            -- ÷敵は×敵を追いかける
             local closest_multiply_enemy = nil
             local min_dist_sq = math.huge
             for k, other_enemy in ipairs(enemy.enemies) do
@@ -133,7 +123,6 @@ function enemy.update(dt, player)
             if closest_multiply_enemy then
                 target_x, target_y = closest_multiply_enemy.x, closest_multiply_enemy.y
             else
-                -- ×敵がいなければ、最も近いマイナス敵を追いかける
                 local closest_minus_enemy = nil
                 local min_dist_sq_minus = math.huge
                 for k, other_enemy in ipairs(enemy.enemies) do
@@ -148,7 +137,7 @@ function enemy.update(dt, player)
                 if closest_minus_enemy then
                     target_x, target_y = closest_minus_enemy.x, closest_minus_enemy.y
                 else
-                    target_x, target_y = player.x, player.y -- それもいなければプレイヤーを追跡
+                    target_x, target_y = player.x, player.y
                 end
             end
         elseif current_enemy.type == "multiply_enemy" then
@@ -163,23 +152,19 @@ function enemy.update(dt, player)
                     end
                 end
             end
-
             if closest_minus_enemy then
                 local dist_to_player_sq = (current_enemy.x - player.x)^2 + (current_enemy.y - player.y)^2
-                -- マイナス敵がプレイヤーより近い場合、マイナス敵を追いかける
                 if min_dist_sq_minus < dist_to_player_sq then
                     target_x, target_y = closest_minus_enemy.x, closest_minus_enemy.y
                 else
-                    -- プレイヤーがマイナス敵より近い場合、プレイヤーから逃げる
                     target_x = current_enemy.x + (current_enemy.x - player.x) * 100
                     target_y = current_enemy.y + (current_enemy.y - player.y) * 100
                 end
             else
-                -- マイナス敵がいない場合、プレイヤーから逃げる
                 target_x = current_enemy.x + (current_enemy.x - player.x) * 100
                 target_y = current_enemy.y + (current_enemy.y - player.y) * 100
             end
-        else -- それ以外の敵は、現時点では最も近いマイナス敵を追う（仮）
+        else
             local closest_minus_enemy = nil
             local min_dist_sq = math.huge
             for k, other_enemy in ipairs(enemy.enemies) do
@@ -194,7 +179,7 @@ function enemy.update(dt, player)
             if closest_minus_enemy then
                 target_x, target_y = closest_minus_enemy.x, closest_minus_enemy.y
             else
-                target_x, target_y = player.x, player.y -- マイナス敵がいなければプレイヤーを追跡
+                target_x, target_y = player.x, player.y
             end
         end
 
@@ -202,7 +187,9 @@ function enemy.update(dt, player)
         current_enemy.x = current_enemy.x + math.cos(angle) * current_enemy.speed * dt
         current_enemy.y = current_enemy.y + math.sin(angle) * current_enemy.speed * dt
 
-        if player.invincible_timer <= 0 and utils.checkCollision(player.x - 10, player.y - 10, 20, 20, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
+        -- プレイヤーとの衝突判定 (無敵時間を考慮)
+        local is_invincible = current_enemy.invincibility_timer and current_enemy.invincibility_timer > 0
+        if not is_invincible and player.invincible_timer <= 0 and utils.checkCollision(player.x - 10, player.y - 10, 20, 20, current_enemy.x - 10, current_enemy.y - 10, 20, 20) then
             if current_enemy.type == "minus_enemy" then
                 player.hp = player.hp - 1
             elseif current_enemy.type == "plus_enemy" then
@@ -220,11 +207,12 @@ function enemy.update(dt, player)
     -- プレイヤーから一定以上離れた敵を削除 (デスポーン)
     for i = #enemy.enemies, 1, -1 do
         local current_enemy = enemy.enemies[i]
-        local dist_sq = (current_enemy.x - player.x)^2 + (current_enemy.y - player.y)^2
-        local despawn_distance_sq = (love.graphics.getWidth() * 1.5)^2
-
-        if dist_sq > despawn_distance_sq then
-            table.remove(enemy.enemies, i)
+        if current_enemy then
+            local dist_sq = (current_enemy.x - player.x)^2 + (current_enemy.y - player.y)^2
+            local despawn_distance_sq = (love.graphics.getWidth() * 1.5)^2
+            if dist_sq > despawn_distance_sq then
+                table.remove(enemy.enemies, i)
+            end
         end
     end
 
@@ -254,11 +242,16 @@ function enemy.update(dt, player)
 
     -- 敵同士の衝突判定
     local enemies_to_remove = {}
+    local enemies_to_add = {}
     for i = 1, #enemy.enemies do
         local enemy1 = enemy.enemies[i]
         for j = i + 1, #enemy.enemies do
             local enemy2 = enemy.enemies[j]
-            if utils.checkCollision(enemy1.x - 10, enemy1.y - 10, 20, 20, enemy2.x - 10, enemy2.y - 10, 20, 20) then
+
+            local is_enemy1_invincible = enemy1.invincibility_timer and enemy1.invincibility_timer > 0
+            local is_enemy2_invincible = enemy2.invincibility_timer and enemy2.invincibility_timer > 0
+
+            if not is_enemy1_invincible and not is_enemy2_invincible and utils.checkCollision(enemy1.x - 10, enemy1.y - 10, 20, 20, enemy2.x - 10, enemy2.y - 10, 20, 20) then
                 if (enemy1.type == "multiply_enemy" and enemy2.type == "minus_enemy") then
                     enemies_to_remove[i] = true
                     enemy2.level = math.min(enemy2.level + 1, 5)
@@ -269,12 +262,12 @@ function enemy.update(dt, player)
                     enemies_to_remove[i] = true
                     enemy2.cooldown = game_state.parameters.enemy_cooldown_time
                     local plus_enemy_data = enemies_data.plus_enemy
-                    table.insert(enemy.enemies, { x = enemy2.x, y = enemy2.y, hp = plus_enemy_data.hp, type = "plus_enemy", speed = plus_enemy_data.speed, cooldown = 0, level = 0 })
+                    table.insert(enemies_to_add, { x = enemy2.x, y = enemy2.y, hp = plus_enemy_data.hp, type = "plus_enemy", speed = plus_enemy_data.speed, cooldown = 0, level = 0, invincibility_timer = plus_enemy_data.spawn_invincibility_duration })
                 elseif (enemy2.type == "multiply_enemy" and enemy1.type == "plus_enemy" and enemy1.cooldown <= 0) then
                     enemies_to_remove[j] = true
                     enemy1.cooldown = game_state.parameters.enemy_cooldown_time
                     local plus_enemy_data = enemies_data.plus_enemy
-                    table.insert(enemy.enemies, { x = enemy1.x, y = enemy1.y, hp = plus_enemy_data.hp, type = "plus_enemy", speed = plus_enemy_data.speed, cooldown = 0, level = 0 })
+                    table.insert(enemies_to_add, { x = enemy1.x, y = enemy1.y, hp = plus_enemy_data.hp, type = "plus_enemy", speed = plus_enemy_data.speed, cooldown = 0, level = 0, invincibility_timer = plus_enemy_data.spawn_invincibility_duration })
                 elseif (enemy1.type == "multiply_enemy" and enemy2.type == "divide_enemy") or (enemy2.type == "multiply_enemy" and enemy1.type == "divide_enemy") then
                     enemies_to_remove[i] = true
                     enemies_to_remove[j] = true
@@ -294,21 +287,21 @@ function enemy.update(dt, player)
                         enemies_to_remove[i] = true
                     end
                 elseif (enemy1.type == "divide_enemy" and enemy2.type == "plus_enemy") then
-                    enemies_to_remove[i] = true
+                    enemies_to_remove[j] = true -- Remove plus_enemy
+                    -- Transform divide_enemy
                     local enemy_types = {"minus_enemy", "plus_enemy", "multiply_enemy", "divide_enemy"}
                     local random_enemy_type = enemy_types[math.random(#enemy_types)]
-                    local new_enemy_data = enemies_data[random_enemy_type]
-                    local offset_dist = 20
-                    table.insert(enemy.enemies, { x = enemy2.x, y = enemy2.y - offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
-                    table.insert(enemy.enemies, { x = enemy2.x, y = enemy2.y + offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
+                    enemy1.type = random_enemy_type
+                    enemy1.level = (random_enemy_type == "minus_enemy" and 1) or 0
+                    enemy1.invincibility_timer = enemies_data[random_enemy_type].spawn_invincibility_duration
                 elseif (enemy2.type == "divide_enemy" and enemy1.type == "plus_enemy") then
-                    enemies_to_remove[j] = true
+                    enemies_to_remove[i] = true -- Remove plus_enemy
+                    -- Transform divide_enemy
                     local enemy_types = {"minus_enemy", "plus_enemy", "multiply_enemy", "divide_enemy"}
                     local random_enemy_type = enemy_types[math.random(#enemy_types)]
-                    local new_enemy_data = enemies_data[random_enemy_type]
-                    local offset_dist = 20
-                    table.insert(enemy.enemies, { x = enemy1.x, y = enemy1.y - offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
-                    table.insert(enemy.enemies, { x = enemy1.x, y = enemy1.y + offset_dist, hp = new_enemy_data.hp, type = random_enemy_type, speed = new_enemy_data.speed, cooldown = 0, level = (random_enemy_type == "minus_enemy" and 1) or 0 })
+                    enemy2.type = random_enemy_type
+                    enemy2.level = (random_enemy_type == "minus_enemy" and 1) or 0
+                    enemy2.invincibility_timer = enemies_data[random_enemy_type].spawn_invincibility_duration
                 end
             end
         end
@@ -319,16 +312,28 @@ function enemy.update(dt, player)
             table.remove(enemy.enemies, i)
         end
     end
+
+    for _, new_enemy in ipairs(enemies_to_add) do
+        table.insert(enemy.enemies, new_enemy)
+    end
 end
 
 function enemy.draw()
     for i, current_enemy in ipairs(enemy.enemies) do
         local enemy_data = enemies_data[current_enemy.type]
+        local r, g, b, a
         if enemy_data and enemy_data.color then
-            love.graphics.setColor(enemy_data.color)
+            r, g, b, a = unpack(enemy_data.color)
         else
-            love.graphics.setColor(1, 1, 1, 1)
+            r, g, b, a = 1, 1, 1, 1
         end
+
+        -- 無敵時間中は半透明にする
+        if current_enemy.invincibility_timer and current_enemy.invincibility_timer > 0 then
+            a = a * 0.5
+        end
+
+        love.graphics.setColor(r, g, b, a)
         love.graphics.rectangle("fill", current_enemy.x - 10, current_enemy.y - 10, 20, 20)
 
         if current_enemy.type == "minus_enemy" and current_enemy.level then
