@@ -1,30 +1,30 @@
--- main.lua Step1.3 Playerインスタンス版（テスト用）
--- 現在は移行テスト。問題あれば main_old_xxx.lua に戻せます。
+-- main.lua Playerインスタンス移行テスト版
+-- Step1.3: player.luaのPlayerクラスを直接利用
 
--- Playerクラスを取得しインスタンスを使う
-local _playerCompat, Player = require("player") -- 旧互換は未使用
-local player -- Playerインスタンス保持
+local playerMod  = require("player")    -- 互換API + PlayerClass保持
+local Player     = playerMod.PlayerClass
+local player     -- Playerインスタンス（love.loadで生成）
 
-local enemy     = require("enemy")
-local bullet    = require("bullet")
-local utils     = require("utils")
-local game_state= require("game_state")
-local upgrade   = require("upgrade")
-local i18n      = require("i18n")
-local timer     = require("timer")
-local camera    = require("camera")
+local enemy      = require("enemy")
+local bullet     = require("bullet")
+local utils      = require("utils")
+local game_state = require("game_state")
+local upgrade    = require("upgrade")
+local i18n       = require("i18n")
+local timer      = require("timer")
+local camera     = require("camera")
 
 function love.load()
     -- Playerインスタンス生成
     player = Player:new()
 
-    -- フォント
-    local font_path = "assets/fonts/MPLUS_FONTS-master/fonts/ttf/Mplus1Code-Regular.ttf"
-    local font_size = 20
-    local japanese_font = love.graphics.newFont(font_path, font_size)
-    love.graphics.setFont(japanese_font)
+    -- 日本語フォント
+    local font_path  = "assets/fonts/MPLUS_FONTS-master/fonts/ttf/Mplus1Code-Regular.ttf"
+    local font_size  = 20
+    local jp_font    = love.graphics.newFont(font_path, font_size)
+    love.graphics.setFont(jp_font)
 
-    -- 日本語ロケール
+    -- 言語設定
     i18n.set_locale("ja")
 
     -- ゲームパラメータ初期化
@@ -32,11 +32,11 @@ function love.load()
 end
 
 function love.update(dt)
+    -- ポーズ時スキップ
     if game_state.current_state == game_state.states.PAUSED then
         return
     end
 
-    -- ゲーム全体更新
     game_state.update(dt, player, bullet, upgrade)
 
     if game_state.current_state == game_state.states.PLAYING then
@@ -59,18 +59,15 @@ function love.draw()
         bullet.draw()
 
         camera.unset_world_transform()
+
         timer.draw()
 
         -- HUD
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.print(i18n.t("hp") .. ": " .. (player.hp or "?"), 10, 10)
-        love.graphics.print(i18n.t("level") .. ": " .. (player.level or "?"), 10, 30)
-        love.graphics.print(
-            i18n.t("xp") .. ": " ..
-            (player.xp or "?") .. " / " .. (player.xp_to_next_level or "?"),
-            10, 50
-        )
-
+        love.graphics.print(i18n.t("hp")    .. ": " .. player.hp,                10, 10)
+        love.graphics.print(i18n.t("level") .. ": " .. player.level,             10, 30)
+        love.graphics.print(i18n.t("xp")    .. ": " .. player.xp .. " / " ..
+                                              player.xp_to_next_level,          10, 50)
     elseif game_state.current_state == game_state.states.LEVEL_UP_CHOICE then
         upgrade.draw()
     end
@@ -108,5 +105,6 @@ function love.keypressed(key)
         end
     end
 end
+
 
 
