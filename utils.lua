@@ -41,6 +41,10 @@ end
 -- シンプルなクラス作成ヘルパー関数
 function utils.class(base)
     local new_class = {}
+    if base then
+        -- Set the base class as the metatable for the new class to handle method lookups.
+        setmetatable(new_class, { __index = base })
+    end
     new_class.__index = new_class
 
     function new_class:new(...)
