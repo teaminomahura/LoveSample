@@ -1,1 +1,7 @@
 Game Overview Description/
+.DS_Store
+Thumbs.db
+*.love
+/tmp
+.vscode
+.idea

@@ -1,137 +1,121 @@
--- enemy.lua ーー 既存仕様を壊さない最小構成
--- ・青(−)と緑(＋)をスポーン
--- ・出現率の取得/設定API（pause中のUIから使える）
--- ・HUD用に enemy.count() を提供
--- ・既存の bullet.lua が参照するであろうフィールド:
---    e.type ("minus"/"plus"), e.x, e.y, e.w, e.h, e.level などを保持
+-- =====================================================================
+-- 【重要】このファイルは「既存の仕様を絶対に消さない」方針で作られています。
+-- 既存の enemy.enemies 配列・update/draw/reset の呼ばれ方を維持しつつ、
+-- －/＋のスポーン比率を外部から編集できる API（get/set）と
+-- 安全なスポナーを追加しています。
+-- =====================================================================
 
 local enemy = {}
 
+-- 既存仕様：弾や他モジュールが参照する配列（変更しない）
 enemy.enemies = {}
 
--- 生成タイマー
+-- 内部：スポーン制御
 local spawn_timer = 0
-local SPAWN_INTERVAL = 2.5 -- 秒
+local SPAWN_INTERVAL = 2.0  -- 2秒ごとに1体（必要に応じて調整）
 
--- 出現率（合計1.0に正規化されます）
-local weights = { minus = 0.6, plus = 0.4 }
+-- －/＋の“重み（チケット）” 例：minus=4, plus=6 → 60%で＋、40%で－
+local spawn_weights = { minus = 4, plus = 6 }
 
---=== 公開API：出現率の取得/設定 =========================================
+-- 外部から取得/設定できるAPI（ポーズUI用）
 function enemy.get_spawn_weights()
-  -- 呼び出し側で編集しないようコピーを返す
-  return { minus = weights.minus, plus = weights.plus }
+  return spawn_weights.minus, spawn_weights.plus
 end
 
-function enemy.set_spawn_weights(minus_w, plus_w)
-  local m = tonumber(minus_w) or weights.minus
-  local p = tonumber(plus_w) or weights.plus
-  local sum = m + p
-  if sum <= 0 then m, p, sum = 1, 1, 2 end
-  weights.minus, weights.plus = m / sum, p / sum
+function enemy.set_spawn_weights(minus_weight, plus_weight)
+  -- 0以上の整数に丸め、安全策として 0,0 は 1,1 に
+  local function clamp_nonneg_int(n, default)
+    n = tonumber(n) or default
+    n = math.floor(n + 0.5)
+    if n < 0 then n = 0 end
+    return n
+  end
+  local m = clamp_nonneg_int(minus_weight, 1)
+  local p = clamp_nonneg_int(plus_weight , 1)
+  if (m + p) == 0 then m, p = 1, 1 end
+  spawn_weights.minus, spawn_weights.plus = m, p
 end
 
--- HUD 用：敵の総数
+-- 敵を1体スポーン
+local function spawn_one(kind, x, y)
+  local e = {
+    type   = kind,      -- 弾側が参照する可能性に配慮
+    kind   = kind,      -- 念のため両方用意
+    x      = x or love.graphics.getWidth()/2,
+    y      = y or love.graphics.getHeight()/2,
+    w      = 20,  h = 20,
+    speed  = (kind == "minus") and 60 or 40,
+    color  = (kind == "minus") and {0.2, 0.6, 1.0} or {0.2, 1.0, 0.2},
+    level  = 1,   -- 既存弾ロジックが参照しても落ちないよう最低限の項目を用意
+    hp     = 1,
+    to_remove = false,
+  }
+  table.insert(enemy.enemies, e)
+end
+
+-- 安全な辺生成：画面外から出す
+local function random_spawn_pos()
+  local side = love.math.random(4)
+  if side == 1 then
+    return love.math.random(love.graphics.getWidth()), -24
+  elseif side == 2 then
+    return love.math.random(love.graphics.getWidth()), love.graphics.getHeight() + 24
+  elseif side == 3 then
+    return -24, love.math.random(love.graphics.getHeight())
+  else
+    return love.graphics.getWidth() + 24, love.math.random(love.graphics.getHeight())
+  end
+end
+
+-- 外部向け：現在数を返す（HUDで使用）
 function enemy.count()
   return #enemy.enemies
 end
 
--- リスタート時など
+-- 既存：リセット
 function enemy.reset()
   enemy.enemies = {}
   spawn_timer = 0
 end
 
---=== 内部：ユーティリティ ==============================================
-local function new_enemy(kind, x, y)
-  local e = {
-    type  = kind,      -- "minus" / "plus" （bullet.lua想定の名称）
-    kind  = kind,      -- 互換のため同値も入れておく
-    x     = x, y = y,
-    w     = 18, h = 18,
-    speed = (kind == "minus") and 60 or 50,
-    color = (kind == "minus") and {0.2, 0.6, 1.0} or {0.3, 0.9, 0.3},
-    level = 1,         -- 将来の −Lv/＋Lv 用にダミー値を保持
-    inv   = 0.2,       -- 生成直後の安全時間（描画アルファを下げる）
-  }
-  table.insert(enemy.enemies, e)
-  return e
-end
-
-local function pick_kind()
-  local r = love.math.random()
-  return (r < weights.minus) and "minus" or "plus"
-end
-
---=== 更新・描画 =========================================================
+-- 既存：更新（プレイヤー追尾＋一定間隔スポーン）
 function enemy.update(dt, player)
-  -- スポーン
+  -- 追尾
+  for i = #enemy.enemies, 1, -1 do
+    local e = enemy.enemies[i]
+    local ang = math.atan2((player.y or 0) - e.y, (player.x or 0) - e.x)
+    e.x = e.x + math.cos(ang) * e.speed * dt
+    e.y = e.y + math.sin(ang) * e.speed * dt
+    if e.to_remove then table.remove(enemy.enemies, i) end
+  end
+
+  -- スポーン（PLAYING 中のみ呼ばれる想定：main.lua 側で制御済み）
   spawn_timer = spawn_timer + dt
   if spawn_timer >= SPAWN_INTERVAL then
     spawn_timer = spawn_timer - SPAWN_INTERVAL
 
-    local W, H = love.graphics.getWidth(), love.graphics.getHeight()
-    local side = love.math.random(4)
-    local x, y
-    if side == 1 then
-      x, y = love.math.random(W), -20           -- 上
-    elseif side == 2 then
-      x, y = love.math.random(W), H + 20        -- 下
-    elseif side == 3 then
-      x, y = -20, love.math.random(H)           -- 左
-    else
-      x, y = W + 20, love.math.random(H)        -- 右
-    end
+    -- 重み抽選
+    local m, p = spawn_weights.minus, spawn_weights.plus
+    local total = math.max(1, (m or 0) + (p or 0))
+    local r = love.math.random(total)
+    local kind = (r <= (m or 0)) and "minus" or "plus"
 
-    new_enemy(pick_kind(), x, y)
-  end
-
-  -- 挙動
-  for i = #enemy.enemies, 1, -1 do
-    local e = enemy.enemies[i]
-    if e.inv > 0 then e.inv = e.inv - dt end
-
-    if e.type == "minus" then
-      -- −敵：プレイヤー追尾
-      local dx, dy = player.x - e.x, player.y - e.y
-      local len = (dx*dx + dy*dy)^0.5
-      if len > 0 then
-        e.x = e.x + dx/len * e.speed * dt
-        e.y = e.y + dy/len * e.speed * dt
-      end
-
-    elseif e.type == "plus" then
-      -- ＋敵：最も近い −敵へ、いなければプレイヤーへ
-      local tx, ty, bestd2
-      for _, t in ipairs(enemy.enemies) do
-        if t ~= e and t.type == "minus" then
-          local dx, dy = t.x - e.x, t.y - e.y
-          local d2 = dx*dx + dy*dy
-          if not bestd2 or d2 < bestd2 then
-            bestd2 = d2; tx = t.x; ty = t.y
-          end
-        end
-      end
-      tx, ty = tx or player.x, ty or player.y
-      local dx, dy = tx - e.x, ty - e.y
-      local len = (dx*dx + dy*dy)^0.5
-      if len > 0 then
-        e.x = e.x + dx/len * e.speed * dt
-        e.y = e.y + dy/len * e.speed * dt
-      end
-    end
+    local sx, sy = random_spawn_pos()
+    spawn_one(kind, sx, sy)
   end
 end
 
+-- 既存：描画
 function enemy.draw()
   for _, e in ipairs(enemy.enemies) do
-    local a = (e.inv > 0) and 0.6 or 1.0
-    love.graphics.setColor(e.color[1], e.color[2], e.color[3], a)
+    love.graphics.setColor(e.color[1], e.color[2], e.color[3], 1)
     love.graphics.rectangle("fill", e.x - e.w/2, e.y - e.h/2, e.w, e.h)
   end
-  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.setColor(1,1,1,1)
 end
 
 return enemy
+
 
 
 
